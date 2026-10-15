@@ -1460,7 +1460,7 @@ function castVote(id, choice) {
   const t = tally(v);
   const m = DB.members.find(x => x.id === VOTE_AS);
   DB.log.unshift({ at: todayISO(), text: 'Голос по ' + v.id + ': ' + m.name + ' — «' + choice + '».' });
-  sbPushBallot(id, VOTE_AS, v.votes[VOTE_AS]); sbPushVote(v);
+  if (!v.demo) { sbPushBallot(id, VOTE_AS, v.votes[VOTE_AS]); sbPushVote(v); }   // учебные голосования в базу не пишем
   if (t.quorum && t.passed && v.status === 'voting') {
     v.status = 'passed'; v.result = { for: t['for'], against: t['against'], abstain: t.abstain, decision: 'Принято', at: todayISO() };
     if (v.demo) {
@@ -1488,7 +1488,7 @@ function castVote(id, choice) {
 function proposeForm() {
   openModal('Внесение предложения', `
     <div class="note">${councilPhase() === 'demo' || DB.settings.demoCouncil
-      ? 'Предложение публикуется для обсуждения на ' + COUNCIL_RULES.voteDays + ' дней и ставится на голосование Совета.'
+      ? '<b>Учебный режим включён:</b> предложение будет помечено как демонстрационное, в базу не запишется и реальную тарифную сетку не изменит.'
       : 'До избрания Совета предложение публикуется как открытое обсуждение. Тарифные решения в переходный период утверждает Администрация строго по расчёту; после выборов вопрос передаётся Совету.'}</div>
     <div class="grid g2" style="margin-top:12px">
       <div class="field"><label>Категория вопроса</label><select id="np_kind" onchange="proposeKinds()">
@@ -1525,12 +1525,14 @@ function proposeCreate() {
     id: (kind === 'tariff' ? 'ТАР' : kind === 'charter' ? 'УСТ' : 'ОРГ') + '-2026-' + String(Math.max(10, ...ids) + 1),
     kind, title, summary: $('#np_summary').value.trim() || 'Обоснование прилагается отдельным расчётом.',
     author: ROLE === 'admin' ? 'Администрация платформы' : (DB.members.find(m => m.id === VOTE_AS) || { name: 'Участник' }).name,
-    created: todayISO(), deadline: $('#np_deadline').value, payload, status: 'voting', votes: {}
+    created: todayISO(), deadline: $('#np_deadline').value, payload, status: 'voting', votes: {},
+    demo: !!DB.settings.demoCouncil
   };
   DB.votes.unshift(v);
   DB.log.unshift({ at: todayISO(), text: 'Внесено предложение ' + v.id + ': ' + v.title + '.' });
-  sbPushVote(v);
-  save(); closeModal(); render(); toast('Предложение ' + v.id + ' опубликовано' + (DB.settings.demoCouncil ? ' для голосования' : ' как открытое обсуждение'), 'ok');
+  if (!v.demo) sbPushVote(v);                                    // учебные предложения в базу не пишем
+  save(); closeModal(); render();
+  toast('Предложение ' + v.id + ' опубликовано' + (v.demo ? ' в учебном режиме (в базу не записывается)' : DB.settings.demoCouncil ? ' для голосования' : ' как открытое обсуждение'), 'ok');
 }
 [castVote, proposeForm, proposeKinds, proposeCreate].forEach(f => window[f.name] = f);
 
