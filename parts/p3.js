@@ -34,11 +34,18 @@ let TAB = 'about';
 function renderTabs() {
   $('#tabs').innerHTML = TABS.map(([id, l]) =>
     '<button class="' + (TAB === id ? 'active' : '') + '" onclick="showTab(\'' + id + '\')">' + l +
-    (id === 'council' && openVotesCount() ? ' <span class="badge b-gold">' + openVotesCount() + '</span>' : '') +
+    (id === 'council' ? (councilPhase() === 'formation' ? ' <span class="mini">(формируется)</span>' : '') + (realOpenVotes() ? ' <span class="badge b-gold">' + realOpenVotes() + '</span>' : '') : '') +
     (id === 'cabinet' && ROLE === 'admin' && DB.applications.filter(a => a.status === 'pending').length ? ' <span class="badge b-info">' + DB.applications.filter(a => a.status === 'pending').length + '</span>' : '') +
     '</button>').join('');
 }
 function openVotesCount() { return DB.votes.filter(v => v.status === 'voting').length; }
+/* Сколько РЕАЛЬНЫХ открытых вопросов (примеры для ознакомления не считаются,
+   пока не включён учебный режим) */
+function realOpenVotes() {
+  const demo = !!(DB.settings && DB.settings.demoCouncil);
+  return DB.votes.filter(v => v.status === 'voting' && (demo || !v.demo)).length;
+}
+window.realOpenVotes = realOpenVotes;
 function showTab(id) { TAB = id; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 window.showTab = showTab;
 
@@ -336,9 +343,10 @@ function viewCarriers() {
     <div class="tbl-scroll"><table>
       <thead><tr><th>Место</th><th>Перевозчик</th><th>Регион</th><th>Парк</th><th>Контейнеры</th><th>Рейтинг</th><th>Уровень</th><th>Статус</th><th></th></tr></thead>
       <tbody>
+      ${!rows.length ? '<tr><td colspan="9" style="text-align:center;padding:26px"><div class="mini">В реестре пока нет перевозчиков.<br>Станьте первым — регистрация занимает несколько минут и бесплатна.</div><div style="margin-top:10px"><button class="btn pri" onclick="showTab(\'cabinet\')">Зарегистрировать компанию</button></div></td></tr>' : ''}
       ${rows.map((c, i) => `<tr>
         <td class="mono"><b>${i + 1}</b></td>
-        <td><b>${esc(c.name)}</b><div class="mini">${c.form === 'ИП' ? 'ИП' : 'ООО'}, ИНН ${esc(c.inn)} · на платформе с ${dt(c.joined)}</div></td>
+        <td><b>${esc(c.name)}</b> ${c.demo ? '<span class="badge b-mut">демо</span>' : ''}<div class="mini">${c.form === 'ИП' ? 'ИП' : 'ООО'}, ИНН ${esc(c.inn)} · на платформе с ${dt(c.joined)}</div></td>
         <td>${esc(c.city)}<div class="mini">${esc(c.region)}</div></td>
         <td class="mono">${c.fleet}</td>
         <td class="mono">${c.containers}<div class="mini">${c.types.join(', ')}</div></td>
@@ -424,7 +432,8 @@ function viewLoads() {
     </div>
     <div class="tbl-scroll"><table>
       <thead><tr><th>Заявка</th><th>Маршрут</th><th>Контейнер</th><th>Схема</th><th>Дата</th><th>Ставка платформы</th><th>Ставок подано</th><th>Статус</th><th></th></tr></thead>
-      <tbody>${DB.loads.map(l => {
+      <tbody>${!DB.loads.length ? '<tr><td colspan="9" style="text-align:center;padding:26px"><div class="mini">Заявок пока нет. Первую заявку может разместить грузовладелец или экспедитор — расчёт ставки появится автоматически.</div><div style="margin-top:10px"><button class="btn pri" onclick="loadForm()">Разместить заявку</button></div></td></tr>' : ''}
+      ${DB.loads.map(l => {
     const km = roadKm(l.from, l.to);
     const r = calc({ from: l.from, to: l.to, km: km, empty: true, emptyKm: km, units: 1, type: l.type, mode: l.mode, days: Math.max(1, Math.round(km / 450)), detention: 4, season: true, ex_expedition: true, ex_docs: true, ex_terminal: l.mode === 'импорт', exv_terminal_units: 2, exv_terminal: 3500, ex_svh: l.mode === 'импорт', exv_svh: 6000, ex_lifting: true, exv_lifting: 3500 });
     l._calc = r;

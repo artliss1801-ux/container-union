@@ -333,10 +333,23 @@ function castVote(id, choice) {
   sbPushBallot(id, VOTE_AS, v.votes[VOTE_AS]); sbPushVote(v);
   if (t.quorum && t.passed && v.status === 'voting') {
     v.status = 'passed'; v.result = { for: t['for'], against: t['against'], abstain: t.abstain, decision: 'Принято', at: todayISO() };
-    applyDecision(v);
-    sbPushVote(v); sbPushTariff();
-    toast('<b>Решение ' + v.id + ' принято</b> (' + t['for'] + '/' + COUNCIL_RULES.seats + '). Тарифная сетка и реестр решений обновлены.', 'ok');
-    if (v.payload && (v.payload.fuelPrice || v.payload.marginBase)) toast('Калькулятор пересчитан по новой сетке: ДТ ' + fmt2(v.payload.fuelPrice || DB.tariff.val.fuelPrice) + ' ₽/л, маржа ' + fmt2(v.payload.marginBase || DB.tariff.val.marginBase) + '%.');
+    if (v.demo) {
+      /* Учебный режим: показываем механику, но реальные данные (тариф, база) не трогаем. */
+      const p = v.payload || {};
+      const what = ('fuelPrice' in p ? 'цена ДТ → ' + fmt2(p.fuelPrice) + ' ₽/л' : '') +
+                   ('marginBase' in p ? (('fuelPrice' in p) ? ', ' : '') + 'маржа → ' + fmt2(p.marginBase) + '%' : '');
+      DB.decisions.unshift({
+        demo: true, id: v.id, title: v.title, kind: v.kind, at: todayISO(),
+        result: 'Учебное голосование (не применяется)',
+        effect: 'Демонстрация механики: порог ' + t.need + ' из ' + COUNCIL_RULES.seats + ' набран. После избрания Совета такое решение изменило бы: ' + (what || 'тарифную сетку платформы') + '. Реальные данные не изменены.'
+      });
+      toast('<b>Учебное голосование:</b> порог набран (' + t['for'] + '/' + COUNCIL_RULES.seats + '). Это демонстрация — тарифная сетка и база не изменяются.', 'ok');
+    } else {
+      applyDecision(v);
+      sbPushVote(v); sbPushTariff();
+      toast('<b>Решение ' + v.id + ' принято</b> (' + t['for'] + '/' + COUNCIL_RULES.seats + '). Тарифная сетка и реестр решений обновлены.', 'ok');
+      if (v.payload && (v.payload.fuelPrice || v.payload.marginBase)) toast('Калькулятор пересчитан по новой сетке: ДТ ' + fmt2(v.payload.fuelPrice || DB.tariff.val.fuelPrice) + ' ₽/л, маржа ' + fmt2(v.payload.marginBase || DB.tariff.val.marginBase) + '%.');
+    }
   } else {
     toast('Голос учтён: ' + (choice === 'for' ? 'за' : choice === 'against' ? 'против' : 'воздержался') + '. Осталось «за» до порога: ' + Math.max(0, t.need - t['for']));
   }

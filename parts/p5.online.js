@@ -81,14 +81,20 @@ async function sbLoadAll(quiet) {
     SB.selectOpt('journal', 'select=*&order=created_at.desc&limit=50'),
     SB.selectOpt('settings', 'select=*')
   ]);
+  // Демонстрационные вопросы и записи реестра держим отдельно — они нужны только
+  // для «учебного режима» и всегда помечены как примеры.
+  const demoVotes = (DB.votes || []).filter(v => v.demo).map(v => JSON.parse(JSON.stringify(v)));
+  const demoDecisions = (DB.decisions || []).filter(d => d.demo).map(d => JSON.parse(JSON.stringify(d)));
+
   if (tar.length) DB.tariff = { version: tar[0].version, approved: tar[0].approved, approvedBy: tar[0].approved_by, val: tar[0].val };
-  if (mem.length) DB.members = mem.map(dbMember);
-  if (car.length) DB.carriers = car.map(dbCarrier);
-  if (app.length) DB.applications = app.map(dbApplication);
-  if (loa.length) DB.loads = loa.map(dbLoad);
-  if (vot.length) { DB.votes = vot.map(dbVote); bal.forEach(b => { const v = DB.votes.find(x => x.id === b.vote_id); if (v) v.votes[b.member_id] = b.choice; }); }
-  if (dec.length) DB.decisions = dec.map(dbDecision);
-  if (jou.length) DB.log = jou.map(j => ({ at: j.at, text: j.text }));
+  if (mem.length) DB.members = mem.map(dbMember);            // пусто до выборов — остаются демо-члены для учебного режима
+  DB.carriers = car.map(dbCarrier);                          // реальные данные: пусто = пусто, демо-профили не подставляем
+  DB.applications = app.map(dbApplication);
+  DB.loads = loa.map(dbLoad);
+  DB.votes = vot.map(dbVote).concat(demoVotes);
+  bal.forEach(b => { const v = DB.votes.find(x => x.id === b.vote_id); if (v) v.votes[b.member_id] = b.choice; });
+  DB.decisions = dec.map(dbDecision).concat(demoDecisions);
+  DB.log = jou.map(j => ({ at: j.at, text: j.text }));
   if (set.length) { DB.settings = DB.settings || {}; set.forEach(s => { DB.settings[s.key === 'council' ? 'demoCouncil' : s.key] = (s.val && typeof s.val === 'object' && 'demoCouncil' in s.val) ? s.val.demoCouncil : s.val; if (s.key === 'council' && s.val) DB.settings = { ...s.val, demoCouncil: !!s.val.demoCouncil }; }); }
   SB_STATE = 'ok'; sbBadge(); save(); render();
   if (!quiet) toast('Данные загружены из базы: ' + DB.carriers.length + ' перевозчиков, ' + DB.loads.length + ' заявок, ' + DB.votes.length + ' вопросов Совета', 'ok');
