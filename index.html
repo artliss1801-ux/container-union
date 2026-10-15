@@ -1,0 +1,2024 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Контейнерный Союз — открытая платформа контейнерных автоперевозок России</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ff9f1c'/%3E%3Cstop offset='1' stop-color='%23ff6a00'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Ctext x='32' y='43' font-family='Arial,Helvetica,sans-serif' font-size='26' font-weight='bold' text-anchor='middle' fill='%23231400'%3EКС%3C/text%3E%3C/svg%3E">
+<meta name="description" content="Контейнерный Союз (КС): калькулятор ставки контейнерной автоперевозки, реестр перевозчиков с рейтингом, биржа грузов и Совет перевозчиков с голосованиями по тарифному регулированию.">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+--bg:#0b1220;--panel:#111c2c;--panel2:#16233a;--panel3:#1c2b44;--line:#26374f;--line2:#33486a;
+--txt:#e9eff8;--mut:#93a7c2;--dim:#6c809b;
+--acc:#ff9f1c;--acc2:#ffbf5c;--ok:#2fbf71;--warn:#e9c31c;--bad:#ef5350;--blue:#3ea6ff;--violet:#9b8cff;
+--r:14px;--sh:0 10px 30px rgba(0,0,0,.35);
+}
+html,body{background:var(--bg);color:var(--txt);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--acc);text-decoration:none}
+.wrap{max-width:1240px;margin:0 auto;padding:0 16px}
+/* ---------- header ---------- */
+header.top{position:sticky;top:0;z-index:60;background:rgba(11,18,32,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top-in{display:flex;align-items:center;gap:14px;padding:10px 16px;max-width:1240px;margin:0 auto;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.3px}
+.logo small{display:block;font-weight:500;font-size:11px;color:var(--mut);letter-spacing:0}
+/* --- Логотип «КС» с разворотом в полное название при наведении --- */
+.ks-logo{display:inline-grid;grid-template-columns:auto 0fr;grid-template-rows:1fr;align-items:stretch;gap:0;
+  border:1px solid rgba(255,159,28,.55);border-radius:10px;overflow:hidden;background:linear-gradient(135deg,rgba(255,159,28,.20),rgba(255,106,0,.10));
+  transition:grid-template-columns .55s cubic-bezier(.22,1,.36,1),border-color .35s,box-shadow .35s;cursor:default;max-width:250px}
+.ks-logo:hover{grid-template-columns:auto 1fr;border-color:var(--acc);box-shadow:0 6px 22px rgba(255,159,28,.28)}
+.ks-mark{display:flex;align-items:center;justify-content:center;padding:8px 11px;font-weight:900;font-size:15px;letter-spacing:1.5px;
+  color:#231400;background:linear-gradient(135deg,var(--acc),#ff6a00);white-space:nowrap}
+.ks-full{white-space:nowrap;overflow:hidden;min-width:0;opacity:0;transition:opacity .35s .12s;display:flex;align-items:center;
+  font-weight:700;font-size:13.5px;color:var(--acc2);letter-spacing:.2px}
+.ks-full b{font-weight:800;color:#ffd9a3}
+.ks-logo:hover .ks-full{opacity:1}
+.ks-logo.sm .ks-mark{padding:7px 10px;font-size:13px;letter-spacing:1px}
+.ks-logo.sm .ks-full{font-size:12.5px}
+/* вариация для футера */
+.ks-logo-footer{margin-bottom:10px}
+.role{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.role label{font-size:12px;color:var(--mut)}
+select,input,textarea,button{font-family:inherit;font-size:14px}
+select,input[type=text],input[type=number],input[type=email],input[type=tel],input[type=date],textarea{
+background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%;outline:none}
+select:focus,input:focus,textarea:focus{border-color:var(--acc)}
+input[type=checkbox],input[type=radio]{width:auto;accent-color:var(--acc)}
+.tag{font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--line2);color:var(--mut)}
+/* ---------- nav ---------- */
+nav.tabs{border-bottom:1px solid var(--line);background:rgba(17,28,44,.6)}
+.tabs-in{display:flex;gap:4px;overflow-x:auto;max-width:1240px;margin:0 auto;padding:0 10px}
+.tabs-in button{background:none;border:none;color:var(--mut);padding:12px 14px;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;font-weight:600}
+.tabs-in button:hover{color:var(--txt)}
+.tabs-in button.active{color:var(--acc);border-bottom-color:var(--acc)}
+.logo-tab{display:flex;align-items:center;gap:8px;background:none;border:none;padding:8px 12px 8px 4px;cursor:pointer;margin-right:6px;border-right:1px solid var(--line)}
+.logo-tab-hint{font-size:11.5px;color:var(--dim);white-space:nowrap}
+.logo-tab:hover .logo-tab-hint{color:var(--acc)}
+/* ---------- layout ---------- */
+main{padding:22px 0 60px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.g23{grid-template-columns:1.35fr 1fr}
+.g32{grid-template-columns:1fr 1.35fr}
+@media(max-width:980px){.g2,.g3,.g4,.g23,.g32{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.card.pad0{padding:0;overflow:hidden}
+.card h2{font-size:17px;margin-bottom:4px}
+.card h3{font-size:15px;margin-bottom:10px}
+.card .sub{color:var(--mut);font-size:13px;margin-bottom:12px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.row.between{justify-content:space-between}
+.sp{height:10px}
+hr{border:none;border-top:1px solid var(--line);margin:14px 0}
+/* ---------- buttons ---------- */
+.btn{background:var(--panel3);color:var(--txt);border:1px solid var(--line2);border-radius:10px;padding:9px 14px;cursor:pointer;font-weight:600}
+.btn:hover{border-color:var(--acc)}
+.btn.pri{background:linear-gradient(135deg,var(--acc),#ff7b00);border:none;color:#251500}
+.btn.ok{background:rgba(47,191,113,.16);border-color:rgba(47,191,113,.5);color:#8ff0bb}
+.btn.bad{background:rgba(239,83,80,.14);border-color:rgba(239,83,80,.5);color:#ffb3b1}
+.btn.sm{padding:6px 10px;font-size:13px;border-radius:9px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+/* ---------- misc ui ---------- */
+.kpi{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.kpi .k{font-size:26px;font-weight:800}
+.kpi .l{color:var(--mut);font-size:12px;margin-top:2px}
+.kpi .n{color:var(--dim);font-size:11px;margin-top:6px}
+.badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;display:inline-block;white-space:nowrap}
+.b-ok{background:rgba(47,191,113,.16);color:#7ee6ab;border:1px solid rgba(47,191,113,.4)}
+.b-warn{background:rgba(233,195,28,.16);color:#f4dc6a;border:1px solid rgba(233,195,28,.4)}
+.b-bad{background:rgba(239,83,80,.16);color:#ffa8a6;border:1px solid rgba(239,83,80,.4)}
+.b-info{background:rgba(62,166,255,.16);color:#9fd2ff;border:1px solid rgba(62,166,255,.4)}
+.b-mut{background:rgba(147,167,194,.12);color:var(--mut);border:1px solid var(--line2)}
+.b-gold{background:rgba(255,159,28,.18);color:#ffcb85;border:1px solid rgba(255,159,28,.45)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.4px;font-weight:700;position:sticky;top:0;background:var(--panel2);z-index:2}
+tbody tr:hover{background:rgba(62,166,255,.05)}
+.tbl-scroll{overflow:auto;max-height:560px;border-radius:var(--r)}
+.mini{font-size:12px;color:var(--mut)}
+.mono{font-variant-numeric:tabular-nums}
+.stars{color:var(--acc);letter-spacing:1px}
+.bar{height:7px;border-radius:99px;background:var(--panel3);overflow:hidden}
+.bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),#ff6a00)}
+.field{margin-bottom:11px}
+.field label{display:block;font-size:12px;color:var(--mut);margin-bottom:5px}
+.fnote{font-size:11px;color:var(--dim);margin-top:4px}
+.chk{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--txt);margin:8px 0}
+.pill{display:inline-flex;gap:6px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--mut)}
+details.acc{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:11px 13px;margin-bottom:8px}
+details.acc summary{cursor:pointer;font-weight:700;font-size:14px}
+details.acc[open] summary{margin-bottom:9px;color:var(--acc)}
+details.acc p,details.acc li{font-size:13.5px;color:#cbd8ea;margin:6px 0}
+details.acc ol,details.acc ul{padding-left:20px}
+.note{background:rgba(62,166,255,.08);border:1px solid rgba(62,166,255,.3);border-radius:11px;padding:11px 13px;font-size:13px;color:#cfe4fb}
+.note.warn{background:rgba(233,195,28,.08);border-color:rgba(233,195,28,.35);color:#f6e5a8}
+.note.bad{background:rgba(239,83,80,.08);border-color:rgba(239,83,80,.35);color:#ffc9c8}
+.result{background:linear-gradient(160deg,#1b2b45,#121d2f);border:1px solid var(--line2);border-radius:var(--r);padding:16px}
+.result .big{font-size:34px;font-weight:900;color:var(--acc);letter-spacing:-.5px}
+.member{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px}
+.avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#2b4368,#1d3050);display:grid;place-items:center;font-weight:800;color:#cfe0f7;font-size:14px;flex:0 0 auto}
+.vote-box{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px}
+.vote-bar{display:flex;height:26px;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.vote-bar i{display:grid;place-items:center;font-size:11px;font-weight:800;color:#0d1522;font-style:normal}
+.tl{list-style:none}
+.tl li{position:relative;padding:0 0 14px 20px;border-left:1px solid var(--line);margin-left:6px}
+.tl li:before{content:'';position:absolute;left:-5px;top:4px;width:9px;height:9px;border-radius:50%;background:var(--acc)}
+.tl li:last-child{border-left-color:transparent}
+.modal-bg{position:fixed;inset:0;background:rgba(4,8,15,.72);display:none;place-items:center;z-index:200;padding:16px}
+.modal-bg.open{display:grid}
+.modal{background:var(--panel);border:1px solid var(--line2);border-radius:16px;box-shadow:var(--sh);width:min(760px,100%);max-height:88vh;overflow:auto}
+.modal .mh{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:3}
+.modal .mb{padding:16px}
+.modal .mf{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;position:sticky;bottom:0;background:var(--panel)}
+#toasts{position:fixed;right:14px;bottom:14px;display:flex;flex-direction:column;gap:8px;z-index:300;max-width:340px}
+.toast{background:var(--panel3);border:1px solid var(--line2);border-left:4px solid var(--acc);border-radius:11px;padding:11px 13px;font-size:13.5px;box-shadow:var(--sh);animation:pop .25s ease}
+.toast.ok{border-left-color:var(--ok)}.toast.bad{border-left-color:var(--bad)}
+@keyframes pop{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+.hide{display:none!important}
+footer{border-top:1px solid var(--line);color:var(--dim);font-size:12.5px;padding:20px 0 40px}
+.smallcaps{font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);font-weight:700}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+</style>
+</head>
+<body>
+<!-- Настройки базы данных: если config.js не заполнен, платформа работает в локальном демо-режиме -->
+<script src="config.js"></script>
+<header class="top">
+  <div class="top-in">
+    <div class="logo">
+      <div class="ks-logo" id="ksLogo" title="Контейнерный Союз — наведите, чтобы увидеть полное название">
+        <div class="ks-mark">КС</div>
+        <div class="ks-full">Контейнерный&nbsp;<b>Союз</b></div>
+      </div>
+      <div>Контейнерный Союз<small>Открытая платформа контейнерных автоперевозок России</small></div>
+    </div>
+    <div class="role">
+      <label for="roleSel">Режим просмотра:</label>
+      <select id="roleSel" style="width:auto">
+        <option value="guest">Гость</option>
+        <option value="carrier">Перевозчик (демо-аккаунт)</option>
+        <option value="council">Член Совета перевозчиков</option>
+        <option value="admin">Администрация платформы</option>
+      </select>
+      <span class="tag" id="storeTag">хранилище: локальный режим</span>
+    </div>
+  </div>
+  <nav class="tabs"><div class="tabs-in">
+    <button class="logo-tab" id="logo-tab" onclick="showTab('about')" title="О платформе: что это, зачем и как устроено">
+      <span class="ks-logo sm"><span class="ks-mark">КС</span><span class="ks-full">Контейнерный&nbsp;<b>Союз</b></span></span>
+      <span class="logo-tab-hint">о платформе</span>
+    </button>
+    <div class="tabs-in" id="tabs" style="padding:0;border:none;background:none"></div>
+  </div></nav>
+</header>
+<main><div class="wrap" id="view"></div></main>
+<footer><div class="wrap">
+  <div class="row between">
+    <div>
+      <div class="ks-logo sm ks-logo-footer"><span class="ks-mark">КС</span><span class="ks-full">Контейнерный&nbsp;<b>Союз</b></span></div>
+      <b>Контейнерный Союз</b> — открытая платформа контейнерных автоперевозок России. Версия 1.0 (15.10.2026).<br>
+      Переходный период: Совет перевозчиков формируется, выборы назначаются при 50 реальных верифицированных перевозчиках в реестре.<br>
+      Демонстрационные перевозчики и учебные голосования помечены в интерфейсе и в тарифах не учитываются.<br>
+      Платформа не является юридическим лицом, не оказывает транспортно-экспедиционных услуг и не является тарифным регулятором;
+      решения Совета носят рекомендательный характер для участников (Устав, ст. 1, 9).
+    </div>
+    <div class="smallcaps">Устав · Правила · Положение о Совете · Регламенты · Типовой договор</div>
+  </div>
+</div></footer>
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+<div id="toasts"></div>
+<script>
+/* ============================================================
+   Контейнерный Союз — прототип платформы контейнерных автоперевозок
+   Часть 1/2: модель данных, тарифная сетка, расчёт ставки, рейтинг, Совет
+   ============================================================ */
+'use strict';
+
+/* ---------- утилиты ---------- */
+const $  = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const fmt   = n => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(Math.round(Number(n) || 0));
+const fmt2  = n => new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n) || 0);
+const money = n => fmt(n) + ' ₽';
+const num   = v => { const x = parseFloat(String(v ?? '').replace(/\s/g, '').replace(',', '.')); return isNaN(x) ? 0 : x; };
+const uid   = p => p + '-' + Math.random().toString(36).slice(2, 6).toUpperCase() + (Date.now() % 1000);
+const esc   = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const dt = iso => iso ? new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+const addDays = (iso, d) => { const x = new Date(iso); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
+const daysLeft = iso => Math.max(0, Math.ceil((new Date(iso) - new Date()) / 86400000));
+const plural = (n, a, b, c) => { n = Math.abs(n) % 100; const n1 = n % 10; if (n > 10 && n < 20) return c; if (n1 > 1 && n1 < 5) return b; if (n1 === 1) return a; return c; };
+
+/* ---------- хранилище (localStorage с откатом в память) ---------- */
+const Store = (() => {
+  const mem = {}; let ls = false;
+  try { localStorage.setItem('__t', '1'); localStorage.removeItem('__t'); ls = true; } catch (e) { ls = false; }
+  return {
+    ls,
+    get(k, def) { try { const v = ls ? localStorage.getItem(k) : mem[k]; return v ? JSON.parse(v) : def; } catch (e) { return def; } },
+    set(k, v) { const s = JSON.stringify(v); if (ls) { try { localStorage.setItem(k, s); return true; } catch (e) { mem[k] = s; return false; } } mem[k] = s; return true; },
+    reset() { if (ls) { try { localStorage.clear(); } catch (e) { } } for (const k in mem) delete mem[k]; }
+  };
+})();
+
+/* ---------- справочник городов (координаты для справочного расчёта плеча) ---------- */
+const CITIES = [
+  ['Москва', 55.755, 37.617, 'ЦФО', 'терминал'],
+  ['Санкт-Петербург', 59.938, 30.314, 'СЗФО', 'порт'],
+  ['Новороссийск', 44.724, 37.768, 'ЮФО', 'порт'],
+  ['Калининград', 54.710, 20.452, 'СЗФО', 'порт'],
+  ['Мурманск', 68.958, 33.083, 'СЗФО', 'порт'],
+  ['Архангельск', 64.539, 40.518, 'СЗФО', 'порт'],
+  ['Екатеринбург', 56.838, 60.605, 'УФО', 'терминал'],
+  ['Казань', 55.796, 49.106, 'ПФО', 'терминал'],
+  ['Нижний Новгород', 56.326, 44.006, 'ПФО', 'терминал'],
+  ['Самара', 53.196, 50.150, 'ПФО', 'терминал'],
+  ['Уфа', 54.738, 55.972, 'ПФО', 'терминал'],
+  ['Челябинск', 55.164, 61.436, 'УФО', 'терминал'],
+  ['Пермь', 58.010, 56.250, 'ПФО', 'терминал'],
+  ['Волгоград', 48.719, 44.502, 'ЮФО', 'терминал'],
+  ['Ростов-на-Дону', 47.231, 39.723, 'ЮФО', 'терминал'],
+  ['Краснодар', 45.035, 38.975, 'ЮФО', 'терминал'],
+  ['Воронеж', 51.661, 39.200, 'ЦФО', 'терминал'],
+  ['Саратов', 51.533, 46.034, 'ПФО', 'терминал'],
+  ['Тюмень', 57.153, 65.534, 'УФО', 'терминал'],
+  ['Омск', 54.992, 73.368, 'СФО', 'терминал'],
+  ['Новосибирск', 55.030, 82.920, 'СФО', 'терминал'],
+  ['Барнаул', 53.355, 83.771, 'СФО', 'терминал'],
+  ['Красноярск', 56.010, 92.852, 'СФО', 'терминал'],
+  ['Иркутск', 52.286, 104.280, 'СФО', 'терминал'],
+  ['Улан-Удэ', 51.828, 107.606, 'ДФО', 'терминал'],
+  ['Чита', 52.034, 113.500, 'ДФО', 'терминал'],
+  ['Хабаровск', 48.482, 135.083, 'ДФО', 'терминал'],
+  ['Владивосток', 43.116, 131.885, 'ДФО', 'порт'],
+  ['Ярославль', 57.626, 39.874, 'ЦФО', 'город'],
+  ['Тула', 54.196, 37.618, 'ЦФО', 'город'],
+  ['Брянск', 53.243, 34.363, 'ЦФО', 'город'],
+  ['Смоленск', 54.782, 32.045, 'ЦФО', 'город'],
+  ['Тверь', 56.858, 35.911, 'ЦФО', 'город'],
+  ['Владимир', 56.136, 40.397, 'ЦФО', 'город'],
+  ['Рязань', 54.626, 39.691, 'ЦФО', 'город'],
+  ['Липецк', 52.608, 39.600, 'ЦФО', 'город'],
+  ['Белгород', 50.595, 36.587, 'ЦФО', 'город'],
+  ['Курск', 51.737, 36.187, 'ЦФО', 'город'],
+  ['Тамбов', 52.722, 41.452, 'ЦФО', 'город'],
+  ['Пенза', 53.195, 45.018, 'ПФО', 'город'],
+  ['Ульяновск', 54.318, 48.403, 'ПФО', 'город'],
+  ['Чебоксары', 56.143, 47.251, 'ПФО', 'город'],
+  ['Киров', 58.603, 49.668, 'ПФО', 'город'],
+  ['Ижевск', 56.852, 53.211, 'ПФО', 'город'],
+  ['Оренбург', 51.768, 55.097, 'ПФО', 'город'],
+  ['Вологда', 59.220, 39.891, 'СЗФО', 'город'],
+  ['Петрозаводск', 61.789, 34.346, 'СЗФО', 'город'],
+  ['Астрахань', 46.349, 48.040, 'ЮФО', 'город'],
+  ['Сочи', 43.602, 39.734, 'ЮФО', 'город'],
+  ['Ставрополь', 45.043, 41.969, 'СКФО', 'город'],
+  ['Пятигорск', 44.049, 43.059, 'СКФО', 'город'],
+  ['Махачкала', 42.977, 47.505, 'СКФО', 'порт'],
+  ['Сургут', 61.254, 73.396, 'УФО', 'город'],
+  ['Орск', 51.205, 58.545, 'ПФО', 'город'],
+  ['Томск', 56.484, 84.948, 'СФО', 'город'],
+  ['Кемерово', 55.354, 86.087, 'СФО', 'город'],
+  ['Владимир (Ковров)', 56.357, 41.320, 'ЦФО', 'город']
+];
+const cityByName = n => CITIES.find(c => c[0] === n);
+const RAD = Math.PI / 180;
+function roadKm(a, b) {
+  const A = cityByName(a), B = cityByName(b); if (!A || !B) return 0;
+  const dLat = (B[1] - A[1]) * RAD, dLon = (B[2] - A[2]) * RAD;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(A[1] * RAD) * Math.cos(B[1] * RAD) * Math.sin(dLon / 2) ** 2;
+  const straight = 2 * 6371 * Math.asin(Math.sqrt(h));
+  const road = straight * 1.24 + 25;              // коэффициент извилистости дорожной сети
+  return Math.max(0, Math.round(road / 5) * 5);
+}
+
+/* ---------- тарифная сетка (редактируется решениями Совета) ---------- */
+const TARIFF_META = [
+  ['fuelPrice', 'Цена дизельного топлива', '₽/л', 'Росстат, средняя по РФ на 05.10.2026 — 86,72 ₽/л; сетка хранит значение, утверждённое Советом'],
+  ['fuelConsLoaded', 'Расход гружёным', 'л/100 км', 'контейнеровоз 40′ с грузом'],
+  ['fuelConsEmpty', 'Расход порожним', 'л/100 км', ''],
+  ['platon', 'Тариф «Платон»', '₽/км', '3,53 ₽/км с 01.02.2026 (индексация по ПП РФ № 843)'],
+  ['platonShare', 'Доля пробега по федеральным трассам', '%', 'для контейнерных плеч обычно 75–90%'],
+  ['leasing', 'Амортизация / лизинг', '₽/км', 'тягач + контейнерная площадка'],
+  ['driverKm', 'ФОТ водителя (сдельная часть)', '₽/км', ''],
+  ['perDiem', 'Суточные и командировочные', '₽/сутки', ''],
+  ['repair', 'Ремонт, ТО, расходники', '₽/км', ''],
+  ['tires', 'Шины', '₽/км', ''],
+  ['insurance', 'Страхование (ОСАГО, КАСКО, ОСГОП)', '₽/км', 'ОСГОП — обязательное для перевозчика'],
+  ['overheadPct', 'Накладные, налоги, администрирование', '% от прямых', 'зависит от налогового режима и структуры парка'],
+  ['marginBase', 'Базовая маржа', '%', 'утверждается Советом как ориентир для расчёта'],
+  ['marginMin', 'Нижняя граница коридора (маржа)', '%', 'ставка ниже этой границы помечается как демпинг'],
+  ['detentionFree', 'Бесплатное время на погрузке/выгрузке', 'ч', ''],
+  ['detentionRate', 'Простой сверх нормы', '₽/час', 'типовое условие договора-перевозки'],
+  ['marketPerKm', 'Рыночный бенчмарк ставки', '₽/км', 'ориентир рынка 85–88 ₽/км по прогнозам отраслевых ассоциаций на 2026 г.'],
+  ['seasonK', 'Сезонная надбавка', '%', 'пик спроса (сентябрь–декабрь), закрытие навигации, распутица'],
+  ['urgencyK', 'Надбавка за срочность', '%', 'срок доставки менее нормативного'],
+  ['emptyReturnK', 'Возврат порожнего контейнера (типовая доля)', '% от плеча', '35% — возврат на ближний терминал/депо; 100% — если контейнер возвращается в порт отправки; 0% — если порожний сдаётся на терминале в пункте назначения']
+];
+const DEFAULT_TARIFF = {
+  version: 'в. 2.3', approved: '2026-08-20', approvedBy: 'Решение ТАР-2026-02',
+  val: {
+    fuelPrice: 86.72, fuelConsLoaded: 33, fuelConsEmpty: 26, platon: 3.53, platonShare: 85,
+    leasing: 14.0, driverKm: 9.0, perDiem: 1800, repair: 5.5, tires: 1.9, insurance: 2.4,
+    overheadPct: 14, marginBase: 14, marginMin: 4,
+    detentionFree: 4, detentionRate: 1500, marketPerKm: 88, seasonK: 6, urgencyK: 10, emptyReturnK: 35
+  }
+};
+
+/* ---------- рейтинг перевозчика ---------- */
+const RATING_LEVELS = [
+  [90, 'Платина', 'b-gold'], [80, 'Золото', 'b-warn'], [70, 'Серебро', 'b-info'], [60, 'Бронза', 'b-mut'], [0, 'Наблюдение', 'b-bad']
+];
+const RATING_WEIGHTS = [
+  ['onTime', 'Соблюдение сроков доставки', 28],
+  ['quality', 'Отсутствие срывов и повреждений', 18],
+  ['reviews', 'Отзывы грузовладельцев', 14],
+  ['tenure', 'Стаж работы на платформе', 10],
+  ['discipline', 'Исполнительская дисциплина (решения Совета, арбитраж)', 12],
+  ['transparency', 'Прозрачность: документы, верификация, ЭТрН', 10],
+  ['volume', 'Объём выполненных рейсов', 8]
+];
+function rating(c) {
+  const m = c.metrics;
+  const quality = Math.max(0, 100 - (m.failures / Math.max(1, m.completed)) * 1000);
+  const parts = {
+    onTime: m.onTime,
+    quality,
+    reviews: Math.min(100, (m.reviews / 5) * 100),
+    tenure: Math.min(100, (m.tenureMonths / 60) * 100),
+    discipline: m.discipline,
+    transparency: m.transparency,
+    volume: Math.min(100, (m.completed / 500) * 100)
+  };
+  let score = 0, rows = [];
+  for (const [k, label, w] of RATING_WEIGHTS) { const v = Math.max(0, Math.min(100, parts[k])); score += v * w / 100; rows.push({ label, w, v, add: v * w / 100 }); }
+  score = Math.round(score * 10) / 10;
+  const level = RATING_LEVELS.find(l => score >= l[0]);
+  return { score, level: level[1], cls: level[2], rows: rows.reverse(), stars: Math.max(1, Math.round(score / 20)) };
+}
+function starsHtml(n) { return '<span class="stars">' + '★'.repeat(n) + '<span style="opacity:.28">' + '★'.repeat(5 - n) + '</span></span>'; }
+
+/* ---------- параметры Совета перевозчиков ---------- */
+const COUNCIL_RULES = {
+  seats: 9, quorum: 7,
+  thresholds: { tariff: 6, org: 5, charter: 7 },
+  kinds: { tariff: 'Тарифное регулирование', org: 'Работа платформы', charter: 'Изменение Устава' },
+  termMonths: 24, voteDays: 7, chairTermMonths: 6
+};
+
+/* ---------- демонстрационные данные ---------- */
+function seed() {
+  const cities = ['Новороссийск', 'Санкт-Петербург', 'Москва', 'Екатеринбург', 'Казань', 'Ростов-на-Дону', 'Владивосток', 'Калининград', 'Уфа', 'Краснодар'];
+  const names = [
+    ['ООО «ТрансКонт-Юг»', 'ЮФО', 42, 38, 'ООО', '2317089012'],
+    ['ООО «СеверПорт-Логистик»', 'СЗФО', 68, 84, 'ООО', '7801453099'],
+    ['ИП Гареев Р. Р.', 'ПФО', 11, 34, 'ИП', '165912340088'],
+    ['ООО «УралКонтейнерСервис»', 'УФО', 95, 120, 'ООО', '6659012347'],
+    ['ООО «СибТрансЛиния»', 'СФО', 27, 52, 'ООО', '5406123459'],
+    ['ООО «ДальВосток-Карго»', 'ДФО', 33, 61, 'ООО', '2543123456'],
+    ['ООО «БалтКонтейнерТранс»', 'СЗФО', 54, 47, 'ООО', '3915123458'],
+    ['ИП Мамедов А. О.', 'ЮФО', 6, 22, 'ИП', '234809876543'],
+    ['ООО «Волга-Бокс»', 'ПФО', 22, 29, 'ООО', '5261123450'],
+    ['ООО «Сибирь-Азия Транзит»', 'СФО', 18, 40, 'ООО', '5407987654']
+  ];
+  const carriers = names.map((n, i) => {
+    const completed = 60 + i * 47;
+    const onTime = 82 + ((i * 7) % 16), misses = 1 + (i % 5);
+    return {
+      id: 'C-' + String(101 + i),
+      name: n[0], region: n[1], city: cities[i % cities.length],
+      form: n[4], inn: n[5],
+      fleet: n[2], containers: n[3],
+      types: i % 3 === 0 ? ['20′', '40′', '40′HC', 'реф'] : i % 2 === 0 ? ['20′', '40′HC'] : ['40′', '40′HC'],
+      demo: true,
+      status: i === 8 ? 'verified' : i === 7 ? 'pending' : i === 9 ? 'suspended' : 'verified',
+      joined: '20' + (22 + (i % 3)) + '-0' + ((i % 8) + 1) + '-1' + (i % 9),
+      docs: { egrul: i !== 7, osgop: i % 5 !== 4, ports: i % 3 === 0, etrn: i % 4 !== 3, taxes: i % 7 !== 5 },
+      metrics: {
+        completed, onTime, failures: misses, reviews: Math.round((4.1 + ((i * 3) % 8) / 10) * 10) / 10,
+        tenureMonths: 10 + i * 4, discipline: 70 + ((i * 9) % 29), transparency: i === 7 ? 40 : 70 + ((i * 11) % 31)
+      },
+      loads: [] // id заявок
+    };
+  });
+  const members = [
+    ['Смирнов Алексей Викторович', 'ООО «ТрансКонт-Юг»', 'Новороссийск', 'ЮФО', 'Тарифный комитет', '2027-04-01', 412],
+    ['Ковалёва Ирина Петровна', 'ООО «СеверПорт-Логистик»', 'Санкт-Петербург', 'СЗФО', 'Комитет по качеству', '2026-12-01', 388],
+    ['Гареев Руслан Ринатович', 'ИП Гареев Р. Р.', 'Казань', 'ПФО', 'Тарифный комитет', '2027-04-01', 205],
+    ['Ахметов Дамир Ильдарович', 'ООО «УралКонтейнерСервис»', 'Екатеринбург', 'УФО', 'Комитет по цифровизации', '2026-12-01', 301],
+    ['Новиков Сергей Андреевич', 'ООО «СибТрансЛиния»', 'Новосибирск', 'СФО', 'Тарифный комитет', '2027-08-01', 257],
+    ['Ли Виктор Сунг-Ирович', 'ООО «ДальВосток-Карго»', 'Владивосток', 'ДФО', 'Комитет по цифровизации', '2026-12-01', 199],
+    ['Берзиньш Андрей Мартиньевич', 'ООО «БалтКонтейнерТранс»', 'Калининград', 'СЗФО', 'Комитет по качеству', '2027-04-01', 233],
+    ['Мамедов Ариф Октаевич', 'ИП Мамедов А. О.', 'Ростов-на-Дону', 'ЮФО', 'Тарифный комитет', '2027-08-01', 176],
+    ['Юсупова Алия Маратовна', 'ООО «Волга-Бокс»', 'Нижний Новгород', 'ПФО', 'Комитет по качеству', '2026-12-01', 221]
+  ].map((m, i) => ({ id: 'M-' + (i + 1), name: m[0], company: m[1], city: m[2], district: m[3], committee: m[4], until: m[5], electedBy: m[6], chair: i === 0, role: i === 0 ? 'Председатель Совета' : 'Член Совета' }));
+
+  const createdBase = '2026-10-05';
+  const votes = [
+    {
+      id: 'ТАР-2026-06', demo: true, kind: 'tariff', title: 'Индексация тарифной сетки: цена ДТ 86,72 → 89,50 ₽/л, базовая маржа 14% → 15%',
+      summary: 'Основание: рост розничных цен на ДТ за сентябрь–октябрь 2026 г. и удорожание ремонта. Проект предполагает пересчёт всех ставок калькулятора и признание расчётов по прежней сетке неактуальными с 01.11.2026.',
+      author: 'Тарифный комитет', created: '2026-10-08', deadline: '2026-10-19',
+      payload: { fuelPrice: 89.5, marginBase: 15 }, status: 'voting',
+      votes: { 'M-1': 'for', 'M-2': 'for', 'M-3': 'against', 'M-4': 'for', 'M-5': 'abstain' }
+    },
+    {
+      id: 'ТАР-2026-05', demo: true, kind: 'tariff', title: 'Минимальная ставка плеча Новороссийск — Москва, 40′HC: 168 000 ₽',
+      summary: 'Расчёт калькулятора по действующей сетке (ДТ 86,72 ₽/л, Платон 3,53 ₽/км, маржа 14%) даёт себестоимость рейса 148 000 ₽ с учётом СВХ, хранения на терминале и ПРР. Проект фиксирует рекомендованный «пол» ставки 168 000 ₽ для защиты от демпинга на импортных направлениях.',
+      author: 'Смирнов А. В.', created: '2026-10-06', deadline: '2026-10-16',
+      payload: { floorRoute: 'Новороссийск→Москва', floorType: '40′HC', floor: 168000 }, status: 'voting',
+      votes: { 'M-1': 'for', 'M-3': 'for', 'M-6': 'for', 'M-8': 'against', 'M-9': 'for', 'M-5': 'for' }
+    },
+    {
+      id: 'ОРГ-2026-04', demo: true, kind: 'org', title: 'Обязательная верификация полиса ОСГОП для допуска к бирже грузов',
+      summary: 'С 01.12.2026 заявки на бирже видны только перевозчикам со статусом «Верифицирован» и действующим договором обязательного страхования ответственности перевозчика.',
+      author: 'Комитет по качеству', created: '2026-10-02', deadline: '2026-10-12',
+      payload: { requireOsgop: true, effective: '2026-12-01' }, status: 'voting',
+      votes: { 'M-2': 'for', 'M-4': 'for', 'M-7': 'for', 'M-9': 'for', 'M-3': 'for' }
+    },
+    {
+      id: 'ТАР-2026-04', demo: true, kind: 'tariff', title: 'Плата за простой сверх 4 часов: 1 500 ₽/час, фиксация в типовом договоре-перевозки',
+      summary: 'Принято 7 голосами «за». Значение внесено в тарифную сетку калькулятора.',
+      author: 'Тарифный комитет', created: '2026-09-14', deadline: '2026-09-24',
+      payload: { detentionRate: 1500, detentionFree: 4 }, status: 'passed',
+      votes: { 'M-1': 'for', 'M-2': 'for', 'M-3': 'for', 'M-4': 'for', 'M-5': 'for', 'M-6': 'for', 'M-7': 'for', 'M-8': 'against', 'M-9': 'abstain' },
+      result: { for: 7, against: 1, abstain: 1, decision: 'Принято', at: '2026-09-24' }
+    },
+    {
+      id: 'ТАР-2026-02', demo: true, kind: 'tariff', title: 'Учёт индексации «Платона» до 3,53 ₽/км в тарифной сетке',
+      summary: 'Принято 8 голосами «за». Сетка пересчитана с 20.08.2026.',
+      author: 'Тарифный комитет', created: '2026-08-10', deadline: '2026-08-20',
+      payload: { platon: 3.53 }, status: 'passed',
+      votes: { 'M-1': 'for', 'M-2': 'for', 'M-3': 'for', 'M-4': 'for', 'M-5': 'for', 'M-6': 'for', 'M-7': 'for', 'M-8': 'for', 'M-9': 'against' },
+      result: { for: 8, against: 1, abstain: 0, decision: 'Принято', at: '2026-08-20' }
+    },
+    {
+      id: 'ОРГ-2026-01', demo: true, kind: 'org', title: 'Вступительный взнос участника 25 000 ₽ и годовой взнос 1 200 ₽ за ТС',
+      summary: 'Отклонено: 3 «за» при необходимых 5. Совет подтвердил принцип бесплатного участия перевозчиков.',
+      author: 'Смирнов А. В.', created: '2026-07-15', deadline: '2026-07-25',
+      payload: { fee: 25000 }, status: 'rejected',
+      votes: { 'M-1': 'for', 'M-3': 'for', 'M-5': 'for', 'M-2': 'against', 'M-4': 'against', 'M-6': 'against', 'M-7': 'against', 'M-8': 'abstain', 'M-9': 'against' },
+      result: { for: 3, against: 5, abstain: 1, decision: 'Отклонено', at: '2026-07-25' }
+    }
+  ];
+
+  const loads = [
+    { id: 'ГР-2026-118', from: 'Новороссийск', to: 'Москва', type: '40′HC', cargo: 'Импорт: оборудование (СВХ)', weight: 26.4, date: '2026-10-22', shipper: 'ООО «Импорт-Терминал»', status: 'open', mode: 'импорт', bids: 3, floor: 168000 },
+    { id: 'ГР-2026-117', from: 'Новороссийск', to: 'Екатеринбург', type: '40′HC', cargo: 'Импорт: товары народного потребления', weight: 24.0, date: '2026-10-24', shipper: 'ТД «Восток»', status: 'open', mode: 'импорт', bids: 2, floor: 0 },
+    { id: 'ГР-2026-116', from: 'Санкт-Петербург', to: 'Казань', type: '20′', cargo: 'Экспорт: полимеры', weight: 21.0, date: '2026-10-21', shipper: 'ООО «Полимер-Трейд»', status: 'bid', mode: 'экспорт', bids: 5, floor: 0 },
+    { id: 'ГР-2026-115', from: 'Москва', to: 'Владивосток', type: '40′', cargo: 'Внутренняя: сборный груз', weight: 18.5, date: '2026-10-28', shipper: 'ООО «Ритейл-Дистрибуция»', status: 'open', mode: 'внутрироссия', bids: 1, floor: 0 },
+    { id: 'ГР-2026-114', from: 'Екатеринбург', to: 'Новосибирск', type: '40′HC', cargo: 'Внутренняя: стройматериалы', weight: 27.0, date: '2026-10-20', shipper: 'ООО «Стройбаза Урал»', status: 'open', mode: 'внутрироссия', bids: 4, floor: 0 },
+    { id: 'ГР-2026-113', from: 'Калининград', to: 'Москва', type: '40′HC (реф)', cargo: 'Импорт: продукты питания', weight: 22.0, date: '2026-10-23', shipper: 'ООО «Фреш-Логистика»', status: 'open', mode: 'импорт', bids: 0, floor: 0 },
+    { id: 'ГР-2026-112', from: 'Владивосток', to: 'Хабаровск', type: '20′', cargo: 'Импорт: комплектующие', weight: 19.0, date: '2026-10-19', shipper: 'ООО «Азия-Трейд»', status: 'assigned', carrierId: 'C-106', mode: 'импорт', bids: 2, floor: 0 },
+    { id: 'ГР-2026-111', from: 'Ростов-на-Дону', to: 'Краснодар', type: '20′', cargo: 'Внутренняя: зерно в контейнерах', weight: 20.0, date: '2026-10-18', shipper: 'АО «Агро-Юг»', status: 'done', carrierId: 'C-101', mode: 'внутрироссия', bids: 3, floor: 0 }
+  ];
+
+  const applications = [
+    { id: 'З-2026-07', name: 'ООО «КонтТранс-Поволжье»', city: 'Самара', inn: '6317123450', fleet: 14, containers: 12, submitted: '2026-10-13', status: 'pending', docs: true },
+    { id: 'З-2026-06', name: 'ИП Шевченко Д. П.', city: 'Архангельск', inn: '290112340055', fleet: 4, containers: 3, submitted: '2026-10-11', status: 'pending', docs: false }
+  ];
+
+  const calcs = [];
+  const decisions = [
+    { demo: true, id: 'ТАР-2026-04', title: 'Плата за простой сверх 4 часов — 1 500 ₽/час', kind: 'tariff', at: '2026-09-24', result: 'Принято (7/9)', effect: 'Значение внесено в тарифную сетку, действует в типовом договоре-перевозки.' },
+    { demo: true, id: 'ТАР-2026-02', title: 'Индексация «Платона» до 3,53 ₽/км', kind: 'tariff', at: '2026-08-20', result: 'Принято (8/9)', effect: 'Тарифная сетка калькулятора пересчитана.' },
+    { demo: true, id: 'ОРГ-2026-01', title: 'Вступительный взнос участника 25 000 ₽', kind: 'org', at: '2026-07-25', result: 'Отклонено (3/9)', effect: 'Участие перевозчиков на платформе остаётся бесплатным.' }
+  ];
+
+  return {
+    carriers, members, votes, loads, applications, calcs, decisions,
+    settings: { demoCouncil: false, electionThreshold: 50, elections: null },
+    tariff: JSON.parse(JSON.stringify(DEFAULT_TARIFF)),
+    log: [{ at: '2026-10-15', text: 'Демонстрационные данные загружены (прототип v0.9).' }]
+  };
+}
+
+let DB = Store.get('ks_db', null) || seed();
+const save = () => Store.set('ks_db', DB);
+if (!Store.get('ks_db', null)) save();
+
+/* ---------- роль / сессия ---------- */
+let ROLE = Store.get('ks_role', 'guest');
+let ME = Store.get('ks_me', null);   // перевозчик-сессия (демо)
+
+/* ---------- расчёт ставки ---------- */
+const EXTRAS = [
+  ['expedition', 'Транспортно-экспедиционное обслуживание (ТЭО)', 2500],
+  ['docs', 'Оформление документов, ЭТрН, пломбы', 1500],
+  ['svh', 'СВХ / таможенное сопровождение', 6000],
+  ['terminal', 'Хранение на терминале, сутки × 3 500 ₽', 3500],
+  ['lifting', 'Погрузо-разгрузочные работы (кран/ричстакер)', 3500],
+  ['oversize', 'Разрешения, спецсопровождение, негабарит', 0]
+];
+function calc(inp) {
+  const t = DB.tariff.val;
+  const c = DB.tariff;
+  const km = Math.max(0, num(inp.km));
+  const emptyKm = inp.empty ? Math.max(0, num(inp.emptyKm || km * t.emptyReturnK / 100)) : 0;
+  const units = Math.max(1, num(inp.units) || 1);
+  const kmTotal = (km + emptyKm) * units;
+  const loadedTot = km * units, emptyTot = emptyKm * units;
+  const days = Math.max(1, num(inp.days) || 1);
+
+  const L = [];
+  const push = (name, val, note) => L.push({ name, val, note: note || '' });
+
+  const fuel = (loadedTot * t.fuelConsLoaded / 100 + emptyTot * t.fuelConsEmpty / 100) * t.fuelPrice;
+  push('Топливо (ДТ)', fuel, `${t.fuelConsLoaded} л/100 км гружёным, ${t.fuelConsEmpty} л/100 км порожним × ${fmt2(t.fuelPrice)} ₽/л`);
+  const platon = kmTotal * t.platon * t.platonShare / 100;
+  push('Система «Платон»', platon, `${t.platon} ₽/км × ${t.platonShare}% пробега по федеральным трассам`);
+  const leasing = kmTotal * t.leasing;
+  push('Амортизация / лизинг', leasing, `${fmt2(t.leasing)} ₽/км × ${fmt(kmTotal)} км`);
+  const driver = kmTotal * t.driverKm + days * t.perDiem;
+  push('ФОТ водителя + суточные', driver, `${fmt2(t.driverKm)} ₽/км + ${fmt(t.perDiem)} ₽ × ${days} ${plural(days, 'сутки', 'суток', 'суток')}`);
+  const repair = kmTotal * t.repair, tires = kmTotal * t.tires, ins = kmTotal * t.insurance;
+  push('Ремонт, ТО, расходники', repair, `${fmt2(t.repair)} ₽/км`);
+  push('Шины', tires, `${fmt2(t.tires)} ₽/км`);
+  push('Страхование (ОСАГО/КАСКО/ОСГОП)', ins, `${fmt2(t.insurance)} ₽/км`);
+  const direct = fuel + platon + leasing + driver + repair + tires + ins;
+
+  let extras = 0, extraRows = [];
+  for (const [key, label, def] of EXTRAS) {
+    const on = inp['ex_' + key];
+    if (on) {
+      let v = num(inp['exv_' + key] ?? def);
+      if (key === 'terminal') v = num(inp['exv_terminal_units'] || 1) * (num(inp['exv_terminal'] ?? def));
+      extras += v; extraRows.push([label, v]);
+    }
+  }
+  const detention = Math.max(0, num(inp.detention) - t.detentionFree) * t.detentionRate;
+  const overhead = (direct + extras + detention) * t.overheadPct / 100;
+  push('Накладные, налоги, администрирование', overhead, `${t.overheadPct}% от прямых затрат, услуг и простоя`);
+
+  const cost = direct + extras + detention + overhead;
+
+  let kSeason = inp.season ? t.seasonK / 100 : 0;
+  let kUrg = inp.urgency ? t.urgencyK / 100 : 0;
+  const kMode = { 'экспорт': 0, 'импорт': .03, 'внутрироссия': 0, 'транзит': .05 }[inp.mode] || 0;   // доп. риск/оформление
+  const k = 1 + kSeason + kUrg + kMode;
+
+  const min = cost * (1 + t.marginMin / 100) * k;
+  const base = cost * (1 + t.marginBase / 100) * k;
+  const max = cost * (1 + t.marginBase * 2 / 100) * k;
+  const perKm = kmTotal ? base / kmTotal : 0;
+  const floorDecision = inp.floor || 0;
+
+  return {
+    lines: L, extras: extras, extraRows, detention, direct, overhead, cost, k,
+    min, base, max, perKm, perUnit: base / units, units, km, emptyKm, kmTotal, days, mode: inp.mode,
+    marketPerKm: t.marketPerKm, vsMarket: t.marketPerKm ? (perKm / t.marketPerKm - 1) * 100 : 0,
+    belowFloor: floorDecision && base < floorDecision,
+    floorDecision
+  };
+}
+
+/* ---------- голосования Совета ---------- */
+function tally(v) {
+  const t = { 'for': 0, 'against': 0, 'abstain': 0, none: 0 };
+  for (const m of DB.members) { const x = v.votes[m.id] || 'none'; t[x]++; }
+  const cast = t['for'] + t['against'] + t['abstain'];
+  const need = COUNCIL_RULES.thresholds[v.kind];
+  const passed = t['for'] >= need;
+  const expired = todayISO() > v.deadline;
+  return { ...t, cast, need, quorum: cast >= COUNCIL_RULES.quorum, passed, expired, result: passed ? 'Принято' : 'Не набрано голосов' };
+}
+function applyDecision(v, resultText) {
+  const t = DB.tariff;
+  const p = v.payload || {};
+  const applied = [];
+  for (const k in p) {
+    if (k in t.val) { t.val[k] = p[k]; applied.push(k); }
+  }
+  if (applied.length) { t.approved = todayISO(); t.approvedBy = 'Решение ' + v.id; const mm = String(t.version).match(/\d+(?:[.,]\d+)?/); t.version = 'в. ' + ((mm ? parseFloat(mm[0].replace(',', '.')) : 2.3) + 0.1).toFixed(1); }
+  DB.decisions.unshift({
+    id: v.id, title: v.title, kind: v.kind, at: todayISO(),
+    result: resultText || ('Принято (' + (v.result ? v.result.for : tally(v)['for']) + '/' + COUNCIL_RULES.seats + ')'),
+    effect: applied.length ? 'Обновлены параметры тарифной сетки: ' + applied.join(', ') + '.' : (p.floor ? 'Зафиксирована минимальная ставка по плечу ' + p.floorRoute + ' — ' + money(p.floor) + '.' : 'Решение общего характера, внесено в реестр и Правила платформы.')
+  });
+}
+/* ============================================================
+   Часть 2/3: интерфейс — Калькулятор, Перевозчики, Грузы
+   ============================================================ */
+
+/* ---------- toast / modal ---------- */
+function toast(msg, kind) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + (kind || '');
+  el.innerHTML = msg;
+  $('#toasts').appendChild(el);
+  setTimeout(() => { el.style.transition = 'opacity .4s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 400); }, 4200);
+}
+function openModal(title, body, footer) {
+  $('#modal').innerHTML =
+    '<div class="mh"><h3 style="margin:0">' + title + '</h3><button class="btn sm" onclick="closeModal()">Закрыть ✕</button></div>' +
+    '<div class="mb">' + body + '</div>' + (footer ? '<div class="mf">' + footer + '</div>' : '');
+  $('#modalBg').classList.add('open');
+}
+function closeModal() { $('#modalBg').classList.remove('open'); }
+$('#modalBg') && $('#modalBg').addEventListener('click', e => { if (e.target.id === 'modalBg') closeModal(); });
+
+/* ---------- вкладки ---------- */
+const TABS = [
+  ['about', 'О платформе'],
+  ['calc', 'Калькулятор ставки'],
+  ['carriers', 'Перевозчики и рейтинг'],
+  ['loads', 'Грузы'],
+  ['council', 'Совет перевозчиков'],
+  ['docs', 'Документы платформы'],
+  ['cabinet', 'Кабинет']
+];
+let TAB = 'about';
+
+function renderTabs() {
+  $('#tabs').innerHTML = TABS.map(([id, l]) =>
+    '<button class="' + (TAB === id ? 'active' : '') + '" onclick="showTab(\'' + id + '\')">' + l +
+    (id === 'council' && openVotesCount() ? ' <span class="badge b-gold">' + openVotesCount() + '</span>' : '') +
+    (id === 'cabinet' && ROLE === 'admin' && DB.applications.filter(a => a.status === 'pending').length ? ' <span class="badge b-info">' + DB.applications.filter(a => a.status === 'pending').length + '</span>' : '') +
+    '</button>').join('');
+}
+function openVotesCount() { return DB.votes.filter(v => v.status === 'voting').length; }
+function showTab(id) { TAB = id; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+window.showTab = showTab;
+
+function render() { renderTabs(); $('#view').innerHTML = ({ about: viewAbout, calc: viewCalc, carriers: viewCarriers, loads: viewLoads, council: viewCouncil, docs: viewDocs, cabinet: viewCabinet }[TAB])(); if (TAB === 'calc') calcAfterRender(); renderTabs(); }
+
+
+/* ============================================================
+   ВКЛАДКА 0. О ПЛАТФОРМЕ
+   ============================================================ */
+function viewAbout() {
+  const pr = electionProgress();
+  const phase = councilPhase();
+  return `
+  <div class="card">
+    <div class="row between" style="align-items:flex-start">
+      <div style="max-width:760px">
+        <div class="ks-logo" style="margin-bottom:12px"><span class="ks-mark">КС</span><span class="ks-full">Контейнерный&nbsp;<b>Союз</b></span></div>
+        <h2 style="font-size:24px">Контейнерный Союз</h2>
+        <div class="sub" style="font-size:14px">Открытая отраслевая платформа контейнерных автоперевозок России: экономически обоснованная ставка, рейтинг добросовестности, биржа заявок и отраслевое саморегулирование через Совет перевозчиков.</div>
+      </div>
+      <div style="text-align:right;min-width:190px">
+        <span class="badge ${PHASE_TEXT[phase][1]}">${PHASE_TEXT[phase][0]}</span>
+        <div style="font-size:26px;font-weight:900;color:var(--acc);margin-top:10px">${pr.n} / ${pr.need}</div>
+        <div class="mini">перевозчиков до выборов Совета</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g3" style="margin-top:16px">
+    <div class="card">
+      <h3>Зачем это перевозчику</h3>
+      <ul class="mini" style="padding-left:18px">
+        <li>видеть <b>справедливую ставку</b> по плечу: смета, коридор, ₽/км — и не работать себе в убыток;</li>
+        <li>отстаивать цену, опираясь на <b>публичный расчёт себестоимости</b>, а не на «рынок сказал»;</li>
+        <li>получать заявки без посредников и видеть <b>рейтинг</b> контрагента;</li>
+        <li>влиять на правила через <b>Совет перевозчиков</b> и открытые обсуждения.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Зачем это грузовладельцу</h3>
+      <ul class="mini" style="padding-left:18px">
+        <li>понятная цена: из чего она состоит и почему меняется;</li>
+        <li>проверенные перевозчики: чек-лист доверия, ОСГОП, ЭТрН, рейтинг по срокам и срывам;</li>
+        <li>типовой договор и электронные акты вместо переписки;</li>
+        <li>претензионная процедура и арбитраж вместо «разбирайтесь сами».</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Как это устроено</h3>
+      <ul class="mini" style="padding-left:18px">
+        <li><b>Калькулятор</b> — тарифная сетка, обновляемая по объективным данным (Росстат, «Платон», показатели участников);</li>
+        <li><b>Реестр и рейтинг</b> — 7 показателей, уровни от Бронзы до Платины;</li>
+        <li><b>Биржа</b> — заявки, ставки, пол по плечу, пометка демпинга;</li>
+        <li><b>Совет перевозчиков</b> — 9 членов, пороги 6/5/7, поименные голосования.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="grid g23" style="margin-top:16px">
+    <div class="card">
+      <h3>Как проходит путь к полноценному регулированию</h3>
+      <ol class="tl" style="margin-top:8px">
+        <li><b>Переходный период (сейчас).</b> Платформа открыта, реестр наполняется реальными перевозчиками. Тарифную сетку ведёт Администрация строго по методике, любые изменения публикуются с расчётом «до/после». Проекты решений идут в открытые обсуждения.</li>
+        <li><b>Порог 50 перевозчиков.</b> Администрация назначает выборы Совета: выдвижение кандидатов 20 дней, кумулятивное голосование участников 15 дней, квоты по федеральным округам.</li>
+        <li><b>Избранный Совет.</b> Тарифные решения — 6 из 9, вопросы платформы — 5 из 9, Устав — 7 из 9, кворум 7. Голоса публикуются персонально, решения попадают в открытый реестр.</li>
+        <li><b>Далее.</b> Комитеты, арбитраж, публичный индекс ставок «Контейнерного Союза» как ориентир отрасли и коллективная позиция перевозчиков в диалоге с грузовладельцами, портами и государством.</li>
+      </ol>
+      <div class="note" style="margin-top:12px">Тарифная сетка — <b>ориентир, а не обязательная цена</b>. Участник вправе применить свой расчёт, если он обоснован в карточке рейса. Обязательные для рынка цены платформа устанавливать не может и не будет — это запрещено законом (ст. 11 ФЗ № 135-ФЗ, ст. 421 ГК РФ).</div>
+    </div>
+    <div>
+      <div class="card">
+        <h3>С чего начать</h3>
+        <div class="row" style="margin-top:8px;flex-wrap:wrap">
+          <button class="btn pri" onclick="showTab('cabinet')">Зарегистрировать компанию</button>
+          <button class="btn" onclick="showTab('calc')">Посчитать ставку</button>
+          <button class="btn" onclick="showTab('loads')">Смотреть заявки</button>
+        </div>
+        <p class="mini" style="margin-top:10px">Регистрация бесплатна. После верификации открываются биржа заявок, подача ставок, рейтинг и право выдвижения в Совет.</p>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>Что уже работает в этой версии</h3>
+        <table><tbody>
+          <tr><td>Калькулятор ставки с тарифной сеткой</td><td style="text-align:right"><span class="badge b-ok">работает</span></td></tr>
+          <tr><td>Реестр перевозчиков и рейтинг</td><td style="text-align:right"><span class="badge b-ok">работает</span></td></tr>
+          <tr><td>Биржа заявок и подача ставок</td><td style="text-align:right"><span class="badge b-ok">работает</span></td></tr>
+          <tr><td>Совет перевозчиков: выборы</td><td style="text-align:right"><span class="badge b-warn">при 50 перевозчиках</span></td></tr>
+          <tr><td>Верификация документов</td><td style="text-align:right"><span class="badge b-info">вручную Администрацией</span></td></tr>
+          <tr><td>Документы: Устав, Правила, регламенты</td><td style="text-align:right"><span class="badge b-warn">проекты</span></td></tr>
+        </tbody></table>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>Навигация</h3>
+        <p class="mini">Логотип <b>КС</b> в шапке и в начале строки вкладок ведёт на эту страницу: наведите на него курсор — развернётся полное название.</p>
+      </div>
+    </div>
+  </div>`;
+}
+window.viewAbout = viewAbout;
+
+/* ============================================================
+   ВКЛАДКА 1. КАЛЬКУЛЯТОР
+   ============================================================ */
+let CALC = null;
+function viewCalc() {
+  const t = DB.tariff.val;
+  const opts = CITIES.map(c => '<option>' + c[0] + '</option>').join('');
+  const modes = [['импорт', 'Импорт (порт/терминал → грузополучатель)'], ['экспорт', 'Экспорт (грузоотправитель → порт/терминал)'], ['внутрироссия', 'Внутрироссия (терминал → терминал)'], ['транзит', 'Транзит / иное']];
+  return `
+  <div class="grid g23">
+    <div>
+      <div class="card">
+        <h2>Калькулятор ставки контейнерной автоперевозки</h2>
+        <div class="sub">Расчёт по тарифной сетке платформы <b>${esc(DB.tariff.version)}</b> (утв. ${dt(DB.tariff.approved)}, основание: ${esc(DB.tariff.approvedBy)}). Сетка меняется только решениями Совета перевозчиков.</div>
+        <div class="grid g2">
+          <div>
+            <div class="field"><label>Пункт отправления</label><select id="c_from">${opts}</select></div>
+            <div class="field"><label>Пункт назначения</label><select id="c_to">${opts}</select></div>
+            <button class="btn sm" onclick="calcDistance()">↔ Рассчитать расстояние</button>
+            <div class="fnote">Расстояние определяется справочно по дорожной сети (коэффициент извилистости); при необходимости укажите фактическое значение вручную — оно имеет приоритет.</div>
+          </div>
+          <div>
+            <div class="field"><label>Расстояние, км (гружёный пробег)</label><input type="number" id="c_km" value="1390"></div>
+            <div class="field"><label>Порожний пробег, км</label><input type="number" id="c_empty" value="1390"></div>
+            <div class="chk"><input type="checkbox" id="c_emptyOn"><label for="c_emptyOn" style="margin:0">Учитывать возврат порожнего контейнера (типовая доля — ${t.emptyReturnK}% плеча; уточняется условиями линии)</label></div>
+          </div>
+        </div>
+        <hr>
+        <div class="grid g2">
+          <div>
+            <div class="field"><label>Тип контейнера</label><select id="c_type">
+              <option>20′</option><option selected>40′HC</option><option>40′</option><option>45′HC</option><option>20′ (реф)</option><option>40′ (реф)</option>
+            </select></div>
+            <div class="field"><label>Количество контейнеров в рейсе</label><input type="number" id="c_units" value="1" min="1" max="2"></div>
+            <div class="field"><label>Вес брутто, тонн</label><input type="number" id="c_weight" value="26" step="0.1"></div>
+          </div>
+          <div>
+            <div class="field"><label>Схема перевозки</label><select id="c_mode">${modes.map(m => '<option value="' + m[0] + '">' + m[1] + '</option>').join('')}</select></div>
+            <div class="field"><label>Срок рейса, дней</label><input type="number" id="c_days" value="4" min="1"></div>
+            <div class="field"><label>Простой на погрузке/выгрузке, часов (норма — ${t.detentionFree} ч)</label><input type="number" id="c_detention" value="6" min="0"></div>
+          </div>
+        </div>
+        <hr>
+        <div class="smallcaps" style="margin-bottom:8px">Дополнительные услуги (по факту условий заявки)</div>
+        <div class="grid g2">
+          ${EXTRAS.map(([k, l, v]) => `
+            <div>
+              <div class="chk"><input type="checkbox" id="c_ex_${k}" ${['expedition', 'docs'].includes(k) ? 'checked' : ''}><label for="c_ex_${k}" style="margin:0">${l}</label></div>
+              <input type="number" id="c_exv_${k}" value="${v}" style="margin-left:24px;width:calc(100% - 24px)" title="Стоимость услуги, ₽">
+            </div>`).join('')}
+        </div>
+        <hr>
+        <div class="grid g3">
+          <div class="chk"><input type="checkbox" id="c_season"><label for="c_season">Сезонная надбавка (пик спроса), +${t.seasonK}%</label></div>
+          <div class="chk"><input type="checkbox" id="c_urgency"><label for="c_urgency">Срочная доставка, +${t.urgencyK}%</label></div>
+          <div class="chk"><input type="checkbox" id="c_floor"><label for="c_floor">Учитывать минимальную ставку по решению Совета</label></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn pri" onclick="calcRun()">Рассчитать ставку</button>
+          <button class="btn" onclick="calcSave()">Сохранить расчёт</button>
+          <button class="btn" onclick="calcToCouncil()">Внести вопрос по тарифу в Совет</button>
+          <button class="btn" onclick="calcReset()">Сбросить</button>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>Как считается «правильная» ставка</h3>
+        <p class="mini">Ставка = (прямые затраты + услуги + простой + накладные) × (1 + маржа) × коэффициенты.</p>
+        <p class="mini" style="margin-top:8px">Прямые затраты учитывают: топливо (нормативный расход гружёным/порожним), «Платон» (${t.platon} ₽/км с долей пробега по федеральным трассам), лизинг/амортизацию, ФОТ водителя и суточные, ремонт и ТО, шины, страхование. Маржа, цена ДТ и все нормативы утверждаются Советом перевозчиков и фиксируются в тарифной сетке.</p>
+        <p class="mini" style="margin-top:8px">Нижняя граница коридора — ставка при минимальной марже: ниже неё перевозка экономически нецелесообразна, такие предложения на бирже помечаются как <span class="badge b-bad">демпинг</span>.</p>
+      </div>
+    </div>
+    <div>
+      <div id="calcOut"><div class="result"><div class="mini">Здесь появится расчёт ставки</div><div class="big">— ₽</div><div class="mini">Укажите параметры рейса и нажмите «Рассчитать ставку»</div></div></div>
+      <div class="card" style="margin-top:16px">
+        <h3>История расчётов</h3>
+        <div class="sub">Сохраняется в браузере (в проде — в личном кабинете).</div>
+        ${DB.calcs.length ? '<div class="tbl-scroll" style="max-height:280px"><table><thead><tr><th>Дата</th><th>Рейс</th><th>Ставка</th><th>₽/км</th><th></th></tr></thead><tbody>' +
+      DB.calcs.slice().reverse().map((c, i) => `<tr><td class="mini">${dt(c.at)}</td><td>${esc(c.route)}<div class="mini">${esc(c.type)}, ${c.km} км</div></td><td class="mono"><b>${money(c.base)}</b></td><td class="mono mini">${fmt2(c.perKm)}</td><td><button class="btn sm" onclick="calcDel(${DB.calcs.length - 1 - i})">✕</button></td></tr>`).join('') + '</tbody></table></div>'
+      : '<p class="mini">Расчётов пока нет.</p>'}
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>Тарифная сетка (${esc(DB.tariff.version)})</h3>
+        <div class="tbl-scroll" style="max-height:320px"><table><tbody>
+        ${TARIFF_META.map(([k, l, u]) => '<tr><td>' + esc(l) + '<div class="mini">' + esc(u) + '</div></td><td class="mono" style="text-align:right">' + fmt2(t[k]) + '</td></tr>').join('')}
+        </tbody></table></div>
+      </div>
+    </div>
+  </div>`;
+}
+function calcDistance() {
+  const km = roadKm($('#c_from').value, $('#c_to').value);
+  if (!km) { toast('Не удалось определить маршрут', 'bad'); return; }
+  $('#c_km').value = km; $('#c_empty').value = km;
+  toast('Расстояние ' + $('#c_from').value + ' → ' + $('#c_to').value + ': <b>' + fmt(km) + ' км</b> (справочно)');
+}
+function calcInputs() {
+  const inp = {
+    from: $('#c_from') ? $('#c_from').value : 'Новороссийск', to: $('#c_to') ? $('#c_to').value : 'Москва',
+    km: $('#c_km').value, empty: $('#c_emptyOn').checked, emptyKm: $('#c_empty').value,
+    units: $('#c_units').value, type: $('#c_type').value, weight: $('#c_weight').value,
+    mode: $('#c_mode').value, days: $('#c_days').value, detention: $('#c_detention').value,
+    season: $('#c_season').checked, urgency: $('#c_urgency').checked, floorChk: $('#c_floor').checked
+  };
+  for (const [k] of EXTRAS) { inp['ex_' + k] = $('#c_ex_' + k).checked; inp['exv_' + k] = $('#c_exv_' + k).value; }
+  inp.exv_terminal_units = 2;   // хранение на терминале: 2 суток как типовое условие импортной схемы
+  const load = DB.loads.find(l => l.from === inp.from && l.to === inp.to && l.type === inp.type);
+  inp.floor = (inp.floorChk && load) ? load.floor : 0;
+  return inp;
+}
+function calcRun(silent) {
+  const inp = calcInputs();
+  const r = calc(inp); CALC = { ...r, inp, at: todayISO(), route: inp.from + ' → ' + inp.to, type: inp.type };
+  const badge = r.belowFloor ? '<span class="badge b-bad">ниже минимальной ставки Совета</span>' : (r.vsMarket < -12 ? '<span class="badge b-warn">ниже рынка более 12%</span>' : '<span class="badge b-ok">в рыночном коридоре</span>');
+  $('#calcOut').innerHTML = `
+    <div class="result">
+      <div class="mini">Рекомендованная ставка</div>
+      <div class="big">${money(r.base)}</div>
+      <div class="mini">${esc(inp.from)} → ${esc(inp.to)} · ${esc(inp.type)} · ${fmt(r.km)} км гружёным + ${fmt(r.emptyKm)} км порожним${r.units > 1 ? ' · ' + r.units + ' конт.' : ''}</div>
+      <hr>
+      <div class="row between" style="margin-bottom:6px"><span class="mini">Экономически обоснованный коридор</span>${badge}</div>
+      <div class="vote-bar">
+        <i style="width:33%;background:#ef5350" title="минимум">${money(r.min)}</i>
+        <i style="width:34%;background:#2fbf71" title="базовая">${money(r.base)}</i>
+        <i style="width:33%;background:#3ea6ff" title="максимум">${money(r.max)}</i>
+      </div>
+      <div class="row between" style="margin-top:6px"><span class="mini">нижняя граница (маржа ${fmt2(DB.tariff.val.marginMin)}%)</span><span class="mini">базовая (маржа ${fmt2(DB.tariff.val.marginBase)}%)</span><span class="mini">верхняя</span></div>
+      <div class="grid g3" style="margin-top:12px">
+        <div class="kpi" style="padding:10px"><div class="k" style="font-size:18px">${fmt2(r.perKm)} ₽</div><div class="l">за 1 км</div></div>
+        <div class="kpi" style="padding:10px"><div class="k" style="font-size:18px">${money(r.perUnit)}</div><div class="l">за контейнер</div></div>
+        <div class="kpi" style="padding:10px"><div class="k" style="font-size:18px">${fmt(r.vsMarket > 0 ? '+' + r.vsMarket.toFixed(1) : r.vsMarket.toFixed(1))}%</div><div class="l">к рынку (${fmt2(r.marketPerKm)} ₽/км)</div></div>
+      </div>
+      ${r.belowFloor ? '<div class="note bad" style="margin-top:12px">Внимание: расчётная ставка ниже минимальной ставки, зафиксированной Советом по данному плечу (' + money(r.floorDecision) + '). Рейс в такой ставке помечается как демпинговый.</div>' : ''}
+      ${!silent ? '' : ''}
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h3>Смета расчёта</h3>
+      <div class="tbl-scroll" style="max-height:420px"><table><tbody>
+        ${r.lines.map(l => `<tr><td>${esc(l.name)}<div class="mini">${esc(l.note)}</div></td><td class="mono" style="text-align:right;white-space:nowrap">${money(l.val)}</td></tr>`).join('')}
+        ${r.extraRows.map(x => `<tr><td>${esc(x[0])}<div class="mini">доп. услуга</div></td><td class="mono" style="text-align:right">${money(x[1])}</td></tr>`).join('')}
+        ${r.detention ? `<tr><td>Простой сверх нормы<div class="mini">${fmt2(DB.tariff.val.detentionRate)} ₽/час</div></td><td class="mono" style="text-align:right">${money(r.detention)}</td></tr>` : ''}
+        <tr><td><b>Себестоимость рейса</b></td><td class="mono" style="text-align:right"><b>${money(r.cost)}</b></td></tr>
+        <tr><td>Коэффициенты (сезон/срочность/схема)<div class="mini">множитель ${fmt2(r.k)}</div></td><td class="mono" style="text-align:right">×${fmt2(r.k)}</td></tr>
+      </tbody></table></div>
+    </div>`;
+  if (!silent) toast('Расчёт выполнен: <b>' + money(r.base) + '</b>', 'ok');
+}
+function calcAfterRender() { if (CALC) calcRun(true); }
+function calcSave() {
+  if (!CALC) calcRun();
+  DB.calcs.push({ at: todayISO(), route: CALC.route, type: CALC.type, km: CALC.km, base: Math.round(CALC.base), perKm: CALC.perKm, inp: CALC.inp });
+  save(); render(); toast('Расчёт сохранён в истории', 'ok');
+}
+function calcDel(i) { DB.calcs.splice(i, 1); save(); render(); }
+function calcReset() { CALC = null; $('#calcOut').innerHTML = '<div class="result"><div class="mini">Расчёт сброшен</div><div class="big">— ₽</div></div>'; }
+function calcToCouncil() {
+  const inp = calcInputs();
+  showTab('council');
+  setTimeout(() => {
+    const f = $('#np_title');
+    if (!f) { toast('Форма подачи предложения доступна членам Совета и Тарифному комитету', 'bad'); return; }
+    $('#np_kind').value = 'tariff';
+    $('#np_title').value = 'Ставка по плечу ' + inp.from + ' → ' + inp.to + ' (' + inp.type + '): пересмотр тарифной сетки';
+    $('#np_summary').value = 'Предложение внесено из калькулятора. Параметры рейса: ' + inp.km + ' км гружёным, ' + inp.emptyKm + ' км порожним, ' + inp.days + ' сут., простой ' + inp.detention + ' ч.';
+    toast('Расчёт перенесён в форму предложения Совета');
+  }, 120);
+}
+[calcDistance, calcRun, calcSave, calcDel, calcReset, calcToCouncil].forEach(f => window[f.name] = f);
+
+/* ============================================================
+   ВКЛАДКА 2. ПЕРЕВОЗЧИКИ И РЕЙТИНГ
+   ============================================================ */
+let FILTER = { region: '', status: '', sort: 'rating' };
+const STATUS_LABEL = { verified: ['Верифицирован', 'b-ok'], pending: ['Ожидает верификации', 'b-warn'], suspended: ['Приостановлен', 'b-bad'] };
+function viewCarriers() {
+  const list = DB.carriers.map(c => ({ ...c, r: rating(c) }));
+  const regions = [...new Set(DB.carriers.map(c => c.region))].sort();
+  let rows = list.filter(c => (!FILTER.region || c.region === FILTER.region) && (!FILTER.status || c.status === FILTER.status));
+  rows.sort((a, b) => FILTER.sort === 'rating' ? b.r.score - a.r.score : FILTER.sort === 'fleet' ? b.fleet - a.fleet : a.name.localeCompare(b.name));
+  const avg = (list.reduce((s, c) => s + c.r.score, 0) / list.length).toFixed(1);
+  return `
+  <div class="grid g4" style="margin-bottom:16px">
+    <div class="kpi"><div class="k">${DB.carriers.length}</div><div class="l">перевозчиков в реестре</div><div class="n">всего зарегистрировано</div></div>
+    <div class="kpi"><div class="k">${DB.carriers.filter(c => c.status === 'verified').length}</div><div class="l">верифицированы</div><div class="n">документы и ОСГОП проверены</div></div>
+    <div class="kpi"><div class="k">${avg}</div><div class="l">средний балл рейтинга</div><div class="n">шкала 0–100</div></div>
+    <div class="kpi"><div class="k">${DB.carriers.length ? Math.round(DB.carriers.reduce((s, c) => s + c.fleet, 0)) : 0}</div><div class="l">единиц техники в парке</div><div class="n">${DB.carriers.reduce((s, c) => s + c.containers, 0)} контейнерных площадок</div></div>
+  </div>
+  <div class="card pad0">
+    <div class="row between" style="padding:14px 16px;gap:10px">
+      <div class="row">
+        <div><label class="mini">Федеральный округ</label><select id="f_region" style="width:auto" onchange="setFilter('region',this.value)"><option value="">Все</option>${regions.map(r => '<option ' + (FILTER.region === r ? 'selected' : '') + '>' + r + '</option>').join('')}</select></div>
+        <div><label class="mini">Статус</label><select id="f_status" style="width:auto" onchange="setFilter('status',this.value)"><option value="">Любой</option>${Object.entries(STATUS_LABEL).map(([k, v]) => '<option value="' + k + '" ' + (FILTER.status === k ? 'selected' : '') + '>' + v[0] + '</option>').join('')}</select></div>
+        <div><label class="mini">Сортировка</label><select style="width:auto" onchange="setFilter('sort',this.value)"><option value="rating" ${FILTER.sort === 'rating' ? 'selected' : ''}>По рейтингу</option><option value="fleet" ${FILTER.sort === 'fleet' ? 'selected' : ''}>По размеру парка</option><option value="name" ${FILTER.sort === 'name' ? 'selected' : ''}>По наименованию</option></select></div>
+      </div>
+      <button class="btn" onclick="showTab('cabinet')">Регистрация перевозчика</button>
+    </div>
+    <div class="tbl-scroll"><table>
+      <thead><tr><th>Место</th><th>Перевозчик</th><th>Регион</th><th>Парк</th><th>Контейнеры</th><th>Рейтинг</th><th>Уровень</th><th>Статус</th><th></th></tr></thead>
+      <tbody>
+      ${rows.map((c, i) => `<tr>
+        <td class="mono"><b>${i + 1}</b></td>
+        <td><b>${esc(c.name)}</b><div class="mini">${c.form === 'ИП' ? 'ИП' : 'ООО'}, ИНН ${esc(c.inn)} · на платформе с ${dt(c.joined)}</div></td>
+        <td>${esc(c.city)}<div class="mini">${esc(c.region)}</div></td>
+        <td class="mono">${c.fleet}</td>
+        <td class="mono">${c.containers}<div class="mini">${c.types.join(', ')}</div></td>
+        <td><b class="mono">${c.r.score}</b><div class="mini">${starsHtml(c.r.stars)}</div></td>
+        <td><span class="badge ${c.r.cls}">${c.r.level}</span></td>
+        <td><span class="badge ${STATUS_LABEL[c.status][1]}">${STATUS_LABEL[c.status][0]}</span></td>
+        <td><button class="btn sm" onclick="carrierCard('${c.id}')">Карточка</button></td>
+      </tr>`).join('')}
+      </tbody></table></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>Из чего складывается рейтинг</h3>
+    <div class="tbl-scroll"><table><thead><tr><th>Показатель</th><th>Вес</th><th>Как считается</th></tr></thead><tbody>
+      ${RATING_WEIGHTS.map(w => '<tr><td>' + w[1] + '</td><td class="mono">' + w[2] + '%</td><td class="mini">' + {
+    onTime: 'доля рейсов, доставленных в согласованный срок (данные трекинга и ЭТрН)',
+    quality: 'количество срывов, повреждений и претензий, приведённое к числу рейсов',
+    reviews: 'средняя оценка грузовладельцев после закрытия рейса',
+    tenure: 'стаж участия: 60 месяцев = 100 баллов',
+    discipline: 'исполнение решений Совета, участие в арбитраже, оплата взносов (взносы — по решению голосования)',
+    transparency: 'заполненность профиля, верификация ИНН, ОСГОП, допуски к портам и терминалам, работа через ЭТрН',
+    volume: 'число выполненных рейсов: 500 рейсов = 100 баллов'
+  }[w[0]] + '</td></tr>').join('')}
+    </tbody></table></div>
+    <p class="mini" style="margin-top:10px">Уровни: 90+ Платина · 80+ Золото · 70+ Серебро · 60+ Бронза · менее 60 — Наблюдение (ограничение доступа к отдельным заявкам биржи и невозможность выдвижения в Совет).</p>
+  </div>`;
+}
+function setFilter(k, v) { FILTER[k] = v; render(); }
+window.setFilter = setFilter;
+
+function carrierCard(id) {
+  const c = DB.carriers.find(x => x.id === id); const r = rating(c);
+  const docs = [['egrul', 'Выписка ЕГРЮЛ/ЕГРИП, ИНН'], ['osgop', 'Полис ОСГОП (обязательное страхование ответственности)'], ['ports', 'Допуск в порты (Новороссийск / СПб / Владивосток)'], ['etrn', 'Работа через ЭТрН (электронная транспортная накладная)'], ['taxes', 'Отсутствие налоговой задолженности']];
+  const myLoads = DB.loads.filter(l => l.carrierId === c.id);
+  openModal('Карточка перевозчика', `
+    <div class="row between"><div><b style="font-size:17px">${esc(c.name)}</b><div class="mini">${c.form}, ИНН ${esc(c.inn)} · ${esc(c.city)}, ${esc(c.region)} · ID ${c.id}</div></div>
+      <div style="text-align:right"><div style="font-size:26px;font-weight:900;color:var(--acc)">${r.score}</div><div class="mini">${starsHtml(r.stars)} · ${r.level}</div></div></div>
+    <hr>
+    <div class="grid g3">
+      <div class="kpi" style="padding:10px"><div class="k" style="font-size:18px">${c.fleet}</div><div class="l">единиц техники</div></div>
+      <div class="kpi" style="padding:10px"><div class="k" style="font-size:18px">${c.containers}</div><div class="l">контейнерных площадок</div></div>
+      <div class="kpi" style="padding:10px"><div class="k" style="font-size:18px">${c.metrics.completed}</div><div class="l">рейсов выполнено</div></div>
+    </div>
+    <h3 style="margin-top:14px">Разбивка рейтинга</h3>
+    <table><tbody>${r.rows.map(x => `<tr><td>${x.label}<div class="mini">вес ${x.w}%</div><div class="bar" style="margin-top:5px"><i style="width:${x.v}%"></i></div></td><td class="mono" style="text-align:right;white-space:nowrap">+${fmt2(x.add)}</td></tr>`).join('')}</tbody></table>
+    <h3 style="margin-top:14px">Показатели надёжности</h3>
+    <p class="mini">Соблюдение сроков — <b>${c.metrics.onTime}%</b> · Срывов/претензий — <b>${c.metrics.failures}</b> · Средняя оценка грузовладельцев — <b>${fmt2(c.metrics.reviews)}/5</b> · Стаж на платформе — <b>${c.metrics.tenureMonths} мес.</b></p>
+    <h3 style="margin-top:14px">Чек-лист доверия</h3>
+    <table><tbody>${docs.map(d => '<tr><td>' + d[1] + '</td><td style="text-align:right">' + (c.docs[d[0]] ? '<span class="badge b-ok">подтверждено</span>' : '<span class="badge b-bad">не подтверждено</span>') + '</td></tr>').join('')}</tbody></table>
+    ${myLoads.length ? '<h3 style="margin-top:14px">Рейсы на платформе</h3><table><tbody>' + myLoads.map(l => '<tr><td>' + l.id + '</td><td>' + l.from + ' → ' + l.to + '</td><td class="mono">' + money(l.rate || 0) + '</td><td>' + l.status + '</td></tr>').join('') + '</tbody></table>' : ''}
+    <div class="note" style="margin-top:14px">Рейтинг пересчитывается автоматически после каждого закрытого рейса и ежемесячно в целом по платформе. Порядок обжалования — Регламент рейтинга и арбитража (раздел «Документы»).</div>
+  `, '<button class="btn" onclick="closeModal()">Закрыть</button>');
+}
+window.carrierCard = carrierCard;
+
+/* ============================================================
+   ВКЛАДКА 3. ГРУЗЫ
+   ============================================================ */
+function bestCarriers(load) {
+  const scored = DB.carriers.filter(c => c.status === 'verified').map(c => {
+    const r = rating(c);
+    const sameRegion = c.region === (cityByName(load.from) || [])[3] ? 8 : 0;
+    const typeOk = c.types.some(t => load.type.startsWith(t.replace('′HC', '′'))) ? 8 : 0;
+    const spare = Math.min(10, c.fleet / 6);
+    return { c, s: Math.round((r.score * 0.78 + sameRegion + typeOk + spare) * 10) / 10, r };
+  }).sort((a, b) => b.s - a.s);
+  return scored.slice(0, 3);
+}
+function viewLoads() {
+  const modes = { 'импорт': 'Импорт', 'экспорт': 'Экспорт', 'внутрироссия': 'Внутрироссия', 'транзит': 'Транзит' };
+  const st = { open: ['Свободен', 'b-ok'], bid: ['Идёт отбор', 'b-warn'], assigned: ['Назначен', 'b-info'], done: ['Выполнен', 'b-mut'] };
+  const openN = DB.loads.filter(l => l.status === 'open' || l.status === 'bid').length;
+  return `
+  <div class="grid g4" style="margin-bottom:16px">
+    <div class="kpi"><div class="k">${openN}</div><div class="l">активных заявок</div><div class="n">доступно перевозчикам реестра</div></div>
+    <div class="kpi"><div class="k">${Object.values(DB.loads.reduce((a, l) => (a[l.type] = 1, a), {})).length}</div><div class="l">типов контейнеров в заявках</div><div class="n">20′, 40′, 40′HC, реф</div></div>
+    <div class="kpi"><div class="k">${DB.loads.filter(l => l.status === 'assigned' || l.status === 'done').length}</div><div class="l">закрыто рейсов</div><div class="n">с расчётом рейтинга</div></div>
+    <div class="kpi"><div class="k">${money(DB.loads.reduce((s, l) => s + (l.rate || 0), 0))}</div><div class="l">объём назначенных ставок</div><div class="n">демонстрационные данные</div></div>
+  </div>
+  <div class="card pad0">
+    <div class="row between" style="padding:14px 16px">
+      <div><h3 style="margin:0">Биржа грузов</h3><div class="mini">Заявки грузовладельцев и экспедиторов. Перевозчики со статусом «Верифицирован» подают ставку; заявки ниже минимальной ставки Совета помечаются как демпинговые.</div></div>
+      <button class="btn" onclick="loadForm()">＋ Разместить заявку</button>
+    </div>
+    <div class="tbl-scroll"><table>
+      <thead><tr><th>Заявка</th><th>Маршрут</th><th>Контейнер</th><th>Схема</th><th>Дата</th><th>Ставка платформы</th><th>Ставок подано</th><th>Статус</th><th></th></tr></thead>
+      <tbody>${DB.loads.map(l => {
+    const km = roadKm(l.from, l.to);
+    const r = calc({ from: l.from, to: l.to, km: km, empty: true, emptyKm: km, units: 1, type: l.type, mode: l.mode, days: Math.max(1, Math.round(km / 450)), detention: 4, season: true, ex_expedition: true, ex_docs: true, ex_terminal: l.mode === 'импорт', exv_terminal_units: 2, exv_terminal: 3500, ex_svh: l.mode === 'импорт', exv_svh: 6000, ex_lifting: true, exv_lifting: 3500 });
+    l._calc = r;
+    return `<tr>
+        <td><b>${l.id}</b><div class="mini">${esc(l.shipper)}</div></td>
+        <td>${esc(l.from)} → ${esc(l.to)}<div class="mini">${fmt(km)} км справочно</div></td>
+        <td>${esc(l.type)}<div class="mini">${l.weight} т брутто</div></td>
+        <td>${modes[l.mode]}<div class="mini">${esc(l.cargo)}</div></td>
+        <td class="mono">${dt(l.date)}</td>
+        <td class="mono"><b>${money(r.base)}</b><div class="mini">${fmt2(r.perKm)} ₽/км${l.floor ? ' · пол Совета ' + fmt(l.floor) : ''}</div></td>
+        <td class="mono">${l.bids}</td>
+        <td><span class="badge ${st[l.status][1]}">${st[l.status][0]}</span></td>
+        <td><button class="btn sm" onclick="loadCard('${l.id}')">Открыть</button></td>
+      </tr>`;
+  }).join('')}</tbody></table></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>Как работает подбор перевозчика</h3>
+    <p class="mini">При открытии заявки платформа автоматически предлагает перевозчиков с учётом рейтинга (78% веса), совпадения федерального округа отправления, наличия подходящего типа контейнерной площадки и свободного парка. Грузовладелец выбирает исполнителя сам; платформа не является стороной договора-перевозки.</p>
+  </div>`;
+}
+function loadCard(id) {
+  const l = DB.loads.find(x => x.id === id);
+  const r = l._calc || calc({ from: l.from, to: l.to, km: roadKm(l.from, l.to), empty: true, km2: 0, units: 1, type: l.type, mode: l.mode, days: 3, detention: 4 });
+  const best = bestCarriers(l);
+  const canBid = ROLE === 'carrier' || ROLE === 'admin';
+  openModal('Заявка ' + l.id, `
+    <div class="row between"><div><b>${esc(l.from)} → ${esc(l.to)}</b><div class="mini">${esc(l.type)} · ${l.weight} т брутто · погрузка ${dt(l.date)} · ${esc(l.cargo)}</div></div>
+      <div style="text-align:right"><div style="font-size:20px;font-weight:800">${money(r.base)}</div><div class="mini">ставка платформы, ${fmt2(r.perKm)} ₽/км</div></div></div>
+    <div class="note" style="margin-top:12px">Заказчик: <b>${esc(l.shipper)}</b>. Условия: норма простоя ${DB.tariff.val.detentionFree} ч, далее ${money(DB.tariff.val.detentionRate)}/час; оплата 50% предоплата, 50% по ЭТрН; срок доставки по согласованию.${l.floor ? ' <b>Минимальная ставка по решению Совета: ' + money(l.floor) + '.</b>' : ''}</div>
+    <h3 style="margin-top:14px">Рекомендованные перевозчики (автоподбор по рейтингу)</h3>
+    <table><tbody>${best.map((b, i) => `<tr><td>${i + 1}. <b>${esc(b.c.name)}</b><div class="mini">${esc(b.c.city)} · ${b.c.fleet} ед. техники · рейтинг ${b.r.score} (${b.r.level})</div></td><td style="text-align:right"><span class="badge ${b.r.cls}">соответствие ${b.s}</span></td></tr>`).join('')}</tbody></table>
+    ${canBid ? `
+    <h3 style="margin-top:14px">${ROLE === 'admin' ? 'Назначить перевозчика (администрация)' : 'Подать ставку перевозчика'}</h3>
+    <div class="grid g2">
+      <div><label class="mini">Ставка, ₽</label><input type="number" id="b_rate" value="${Math.round(r.base)}"></div>
+      <div><label class="mini">Срок доставки, дней</label><input type="number" id="b_days" value="${Math.max(2, Math.round(roadKm(l.from, l.to) / 450) + 1)}"></div>
+    </div>
+    <div class="chk"><input type="checkbox" id="b_terms" checked><label for="b_terms" style="margin:0">Подтверждаю условия заявки и <a href="#" onclick="return false">типовой договор-перевозки</a> платформы</label></div>
+    ${ROLE === 'admin' ? '<div class="field"><label>Перевозчик</label><select id="b_carrier">' + best.map(b => '<option value="' + b.c.id + '">' + esc(b.c.name) + ' — рейтинг ' + b.r.score + '</option>').join('') + '</select></div>' : ''}
+    ` : '<div class="note warn" style="margin-top:14px">Подача ставок доступна верифицированным перевозчикам. Войдите под демо-перевозчиком в переключателе режима вверху или зарегистрируйтесь во вкладке «Кабинет».</div>'}
+  `, (canBid ? '<button class="btn pri" onclick="placeBid(\'' + l.id + '\')">' + (ROLE === 'admin' ? 'Назначить рейс' : 'Подать ставку') + '</button>' : '') + '<button class="btn" onclick="closeModal()">Закрыть</button>');
+}
+function placeBid(id) {
+  const l = DB.loads.find(x => x.id === id);
+  const rate = num($('#b_rate').value);
+  if (!$('#b_terms').checked) { toast('Необходимо подтвердить условия заявки', 'bad'); return; }
+  const cid = ROLE === 'admin' ? $('#b_carrier').value : (ME || 'C-101');
+  const c = DB.carriers.find(x => x.id === cid);
+  if (l.floor && rate < l.floor) { toast('Ставка ниже минимальной ставки Совета (' + money(l.floor) + '). Заявка помечена как <b>демпинговая</b> и направлена в арбитраж.', 'bad'); }
+  l.bids = (l.bids || 0) + 1;
+  if (ROLE === 'admin') {
+    l.status = 'assigned'; l.carrierId = cid; l.rate = rate;
+    c.metrics.completed += 1; c.metrics.onTime = Math.min(100, c.metrics.onTime + 0.2);
+    DB.log.unshift({ at: todayISO(), text: 'Рейс ' + l.id + ' назначен: ' + c.name + ', ставка ' + money(rate) + '.' });
+    sbPushBid(l, rate, cid, 'assign'); sbJournal('Рейс ' + l.id + ' назначен: ' + c.name + ', ставка ' + money(rate) + '.');
+    toast('Рейс назначен на ' + esc(c.name), 'ok'); save(); closeModal(); render();
+  } else {
+    DB.log.unshift({ at: todayISO(), text: 'Перевозчик ' + c.name + ' подал ставку ' + money(rate) + ' по заявке ' + l.id + '.' });
+    sbPushBid(l, rate, cid, 'bid'); sbJournal('Перевозчик ' + c.name + ' подал ставку ' + money(rate) + ' по заявке ' + l.id + '.');
+    save(); closeModal(); render(); toast('Ставка подана. Заявка в разделе «Мои рейсы» кабинета.', 'ok');
+  }
+}
+function loadForm() {
+  const opts = CITIES.map(c => '<option>' + c[0] + '</option>').join('');
+  openModal('Размещение заявки на перевозку', `
+    <div class="note">Заявки размещают грузовладельцы, экспедиторы и агенты. Для юридической чистоты заявка содержит существенные условия будущего договора-перевозки.</div>
+    <div class="grid g2" style="margin-top:12px">
+      <div class="field"><label>Откуда</label><select id="n_from">${opts}</select></div>
+      <div class="field"><label>Куда</label><select id="n_to">${opts}</select></div>
+      <div class="field"><label>Тип контейнера</label><select id="n_type"><option>20′</option><option selected>40′HC</option><option>40′</option><option>45′HC</option><option>20′ (реф)</option><option>40′ (реф)</option></select></div>
+      <div class="field"><label>Схема</label><select id="n_mode"><option value="импорт">Импорт</option><option value="экспорт">Экспорт</option><option value="внутрироссия">Внутрироссия</option><option value="транзит">Транзит</option></select></div>
+      <div class="field"><label>Вес брутто, т</label><input type="number" id="n_weight" value="24"></div>
+      <div class="field"><label>Дата погрузки</label><input type="date" id="n_date" value="${addDays(todayISO(), 7)}"></div>
+      <div class="field"><label>Заказчик</label><input type="text" id="n_shipper" value="ООО «Новый клиент»"></div>
+      <div class="field"><label>Описание груза</label><input type="text" id="n_cargo" value="Импорт: товары народного потребления"></div>
+    </div>
+    <div class="chk"><input type="checkbox" id="n_agree" checked><label for="n_agree" style="margin:0">Согласен с Правилами биржи грузов и подтверждаю достоверность сведений</label></div>
+  `, '<button class="btn pri" onclick="loadCreate()">Опубликовать заявку</button><button class="btn" onclick="closeModal()">Отмена</button>');
+}
+function loadCreate() {
+  if (!$('#n_agree').checked) { toast('Подтвердите согласие с Правилами биржи', 'bad'); return; }
+  const l = {
+    id: 'ГР-2026-' + (119 + DB.loads.filter(x => x.id.startsWith('ГР-2026-1')).length),
+    from: $('#n_from').value, to: $('#n_to').value, type: $('#n_type').value, mode: $('#n_mode').value,
+    weight: num($('#n_weight').value), date: $('#n_date').value, shipper: $('#n_shipper').value,
+    cargo: $('#n_cargo').value, status: 'open', bids: 0, floor: 0
+  };
+  DB.loads.unshift(l);
+  DB.log.unshift({ at: todayISO(), text: 'Размещена заявка ' + l.id + ': ' + l.from + ' → ' + l.to + ' (' + l.type + ').' });
+  sbPushLoad(l); sbJournal('Размещена заявка ' + l.id + ': ' + l.from + ' → ' + l.to + ' (' + l.type + ').');
+  save(); closeModal(); render(); toast('Заявка ' + l.id + ' опубликована на бирже', 'ok');
+}
+[loadCard, placeBid, loadForm, loadCreate].forEach(f => window[f.name] = f);
+/* ============================================================
+   Часть 3/3: Совет перевозчиков, Документы, Кабинет, запуск
+   ============================================================ */
+
+/* ============================================================
+   ВКЛАДКА 4. СОВЕТ ПЕРЕВОЗЧИКОВ
+   ============================================================ */
+let VOTE_AS = 'M-1';
+/* ---------- состояние Совета: формирование → выборы → работа ---------- */
+function realVerified() { return DB.carriers.filter(c => c.status === 'verified' && !c.demo); }
+function electionProgress() {
+  const need = (DB.settings && DB.settings.electionThreshold) || 50;
+  const n = realVerified().length;
+  return { n, need, pct: Math.min(100, Math.round(n / need * 100)), ready: n >= need, demoCount: DB.carriers.filter(c => c.demo).length };
+}
+function councilPhase() {
+  if (DB.settings && DB.settings.elections && DB.settings.elections.completed) return 'elected';
+  if (DB.settings && DB.settings.elections) return 'campaign';
+  if (DB.settings && DB.settings.demoCouncil) return 'demo';
+  return 'formation';
+}
+const PHASE_TEXT = {
+  formation: ['Переходный период: Совет формируется', 'b-warn'],
+  campaign: ['Избирательная кампания', 'b-info'],
+  elected: ['Совет избран', 'b-ok'],
+  demo: ['Учебный режим механики голосования', 'b-mut']
+};
+
+function viewCouncil() {
+  const pr = electionProgress();
+  const phase = councilPhase();
+  const demo = phase === 'demo' || !!DB.settings.demoCouncil;
+  const camp = DB.settings.elections;
+  const canVote = (ROLE === 'council' || ROLE === 'admin') && demo;
+  const canPropose = ROLE === 'council' || ROLE === 'admin';
+  const voting = DB.votes.filter(v => v.status === 'voting');
+  const votingReal = voting.filter(v => !v.demo);
+  const votingDemo = voting.filter(v => v.demo);
+  const candidates = realVerified();
+
+  const statusCard = `
+  <div class="card">
+    <div class="row between">
+      <div>
+        <div class="row" style="gap:8px;margin-bottom:6px">
+          <span class="badge ${PHASE_TEXT[phase][1]}">${PHASE_TEXT[phase][0]}</span>
+          ${demo ? '<span class="badge b-mut">УЧЕБНЫЙ РЕЖИМ</span>' : ''}
+          ${DB.settings.demoCouncil ? '' : ''}
+        </div>
+        <h2 style="margin:0">Совет перевозчиков ${phase === 'elected' ? '— избран и работает' : '— формируется'}</h2>
+        <div class="sub" style="margin:6px 0 0">
+          ${phase === 'elected'
+            ? 'Состав сформирован по итогам выборов участников. Решения принимаются голосованием: тарифы — 6 из 9, работа платформы — 5 из 9, Устав — 7 из 9, кворум — 7 членов.'
+            : 'Выборы назначаются, когда в реестре будет <b>' + pr.need + '</b> реальных верифицированных перевозчиков. ' +
+              'До избрания Совета действуют <b>Переходные положения Устава</b>: тарифную сетку ведёт Администрация строго по методике, проекты решений публикуются как открытые обсуждения.'}
+        </div>
+      </div>
+      <div style="text-align:right;min-width:160px">
+        <div style="font-size:30px;font-weight:900;color:var(--acc)">${pr.n} / ${pr.need}</div>
+        <div class="mini">реальных перевозчиков в реестре</div>
+      </div>
+    </div>
+    <div class="bar" style="margin-top:12px"><i style="width:${pr.pct}%"></i></div>
+    <div class="row between" style="margin-top:6px">
+      <span class="mini">готовность к выборам: <b>${pr.pct}%</b></span>
+      <span class="mini">демонстрационных профилей в реестре: ${pr.demoCount} — в счёт не идут</span>
+    </div>
+    ${camp ? `
+      <hr>
+      <div class="smallcaps" style="margin-bottom:6px">Избирательная кампания</div>
+      <div class="row" style="gap:18px">
+        <div class="pill">назначены: ${dt(camp.announced)}</div>
+        <div class="pill">выдвижение кандидатов до: ${dt(camp.candidatesDeadline)}</div>
+        <div class="pill">голосование участников до: ${dt(camp.voteDeadline)}</div>
+        <div class="pill">кандидатов: ${candidates.length} (нужно ≥ 9)</div>
+      </div>
+      ${candidates.length >= 9 ? '<button class="btn pri" style="margin-top:12px" onclick="publishCouncil()">Опубликовать избранный состав (9 мест)</button>' : '<p class="mini" style="margin-top:10px">После выдвижения минимум 9 кандидатов появится кнопка публикации состава. Кандидаты формируются из реальных верифицированных перевозчиков, прошедших отбор.</p>'}
+    ` : (pr.ready
+      ? `<button class="btn pri" style="margin-top:12px" onclick="scheduleElections()">Назначить выборы Совета</button>`
+      : `<p class="mini" style="margin-top:10px">Порог ${pr.need} перевозчиков ещё не достигнут — выборы будут назначены автоматически по достижении порога (кнопка появится в кабинете Администрации).</p>`)}
+  </div>`;
+
+  const transitionCard = `
+  <div class="card" style="margin-top:16px">
+    <h3>Переходные положения: как управляется платформа до выборов</h3>
+    <ol class="tl" style="margin-top:8px">
+      <li><b>Тарифная сетка.</b> Ведётся Администрацией строго по Регламенту расчёта: источники — Росстат (цена ДТ), ПП РФ № 843 («Платон»), данные участников, рыночные бенчмарки. Каждое изменение публикуется с расчётом «до/после» и попадает в реестр как «решение переходного периода».</li>
+      <li><b>Проекты решений.</b> Любой перевозчик-участник вправе опубликовать предложение; оно идёт в открытое обсуждение (не менее 7 дней), замечания собираются в карточке вопроса.</li>
+      <li><b>Утверждение.</b> В переходный период тарифные решения утверждает Администрация; после избрания Совета — Совет голосованием (6/5/7 из 9).</li>
+      <li><b>Выборы.</b> Назначаются при достижении <b>${pr.need}</b> реальных верифицированных перевозчиков: выдвижение — 20 дней, голосование участников — 15 дней, кумулятивное голосование, квоты по федеральным округам.</li>
+      <li><b>Для первых выборов требования к кандидату мягче:</b> статус «Верифицирован», отсутствие применённых санкций, заявка от компании. Требование рейтинга ≥ 80 и стажа 12 месяцев применяется начиная со второго цикла — чтобы первые выборы не блокировались отсутствием истории.</li>
+    </ol>
+  </div>`;
+
+  const demoSwitch = ['admin', 'council'].includes(ROLE) ? `
+  <div class="card" style="margin-top:16px">
+    <div class="row between">
+      <div><h3 style="margin:0">Учебный режим</h3>
+      <div class="mini">Показать механику голосования на девяти демонстрационных членах Совета: пороги, кворум, поименные голоса, авто-применение решения к тарифной сетке. Данные вымышленные и в реестр решений попадают только как демонстрация.</div></div>
+      <button class="btn ${demo ? 'bad' : 'pri'}" onclick="toggleDemoCouncil()">${demo ? 'Выключить учебный режим' : 'Включить учебный режим'}</button>
+    </div>
+  </div>` : '';
+
+  if (demo) {
+    return `
+    ${statusCard}
+    <div class="note warn" style="margin-top:12px"><b>Учебный режим включён.</b> Состав Совета, вопросы и голоса ниже — демонстрационные (показывают, как будет работать Совет после выборов). Они не являются решениями платформы.</div>
+    <div class="grid g4" style="margin:16px 0">
+      <div class="kpi"><div class="k">9</div><div class="l">мест в Совете</div><div class="n">квоты по федеральным округам</div></div>
+      <div class="kpi"><div class="k">${voting.length}</div><div class="l">вопросов на голосовании</div><div class="n">кворум — ${COUNCIL_RULES.quorum} членов</div></div>
+      <div class="kpi"><div class="k">6 / 5 / 7</div><div class="l">пороги: тариф / платформа / Устав</div><div class="n">из 9 голосов «за»</div></div>
+      <div class="kpi"><div class="k">${DB.decisions.length}</div><div class="l">записей в реестре решений</div><div class="n">включая принятые в переходный период</div></div>
+    </div>
+    <div class="grid g23">
+      <div>
+        <div class="card">
+          <div class="row between"><h2 style="margin:0">Вопросы на голосовании <span class="badge b-mut">ДЕМО</span></h2>${canPropose ? '<button class="btn sm" onclick="proposeForm()">＋ Внести предложение</button>' : ''}</div>
+          <div class="sub">Голосование — ${COUNCIL_RULES.voteDays} календарных дней. Решение принято, если «за» подано не менее порога и собрано ${COUNCIL_RULES.quorum} голосов.</div>
+          ${voting.length ? voting.map(v => voteCard(v, canVote)).join('') : '<p class="mini">Открытых голосований нет.</p>'}
+        </div>
+        <div class="card" style="margin-top:16px">
+          <h2>Реестр решений</h2>
+          <div class="sub">Принятые акты. Значения из тарифных решений автоматически переносятся в тарифную сетку калькулятора.</div>
+          ${DB.decisions.map(decisionRow).join('')}
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <h2>Состав Совета <span class="badge b-warn">ДЕМО</span></h2>
+          <div class="sub">9 членов, выдвигаются участниками, избираются кумулятивным голосованием с квотами по округам. Ниже — демонстрационные профили для показа механики.</div>
+          ${DB.members.map(memberRow).join('')}
+          <div class="note">Председатель избирается Советом на ${COUNCIL_RULES.chairTermMonths} месяцев, ведёт заседания и подписывает реестр решений; при равенстве голосов его голос — решающий (кроме вопросов Устава, где нужно ${COUNCIL_RULES.thresholds.charter} голосов).</div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <h2>Порядок принятия решений</h2>
+          <ol class="tl" style="margin-top:8px">
+            <li><b>Инициатива.</b> Член Совета, комитет, участник через кабинет или Администрация.</li>
+            <li><b>Публикация.</b> Проект, обоснование и расчёт — в открытом доступе 7 дней.</li>
+            <li><b>Обсуждение.</b> Замечания собираются в карточке вопроса; профильный комитет готовит заключение.</li>
+            <li><b>Голосование.</b> Открытое, персональное: тариф 6/9, платформа 5/9, Устав 7/9, кворум 7.</li>
+            <li><b>Опубликование.</b> Реестр решений, тарифная сетка и регламенты обновляются в течение 3 рабочих дней.</li>
+            <li><b>Обжалование.</b> Согласительная комиссия и Арбитраж (Устав, ст. 12).</li>
+          </ol>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <h2>Журнал платформы</h2>
+          <div class="tbl-scroll" style="max-height:240px"><table><tbody>
+            ${DB.log.slice(0, 12).map(x => '<tr><td class="mini" style="white-space:nowrap">' + dt(x.at) + '</td><td class="mini">' + esc(x.text) + '</td></tr>').join('')}
+          </tbody></table></div>
+        </div>
+      </div>
+    </div>
+    ${demoSwitch}`;
+  }
+
+  return `
+  ${statusCard}
+  <div class="grid g23" style="margin-top:16px">
+    <div>
+      <div class="card">
+        <div class="row between"><h2 style="margin:0">Открытые обсуждения</h2>${canPropose ? '<button class="btn sm" onclick="proposeForm()">＋ Внести предложение</button>' : ''}</div>
+        <div class="sub">До избрания Совета проекты решений публикуются для открытого обсуждения. По тарифам решение утверждает Администрация строго по расчёту; после выборов все проекты передаются Совету.</div>
+        ${votingReal.length ? votingReal.map(v => transitionVoteCard(v)).join('') : '<p class="mini">Открытых обсуждений нет. Первое предложение может внести любой участник — кнопка «Внести предложение» выше.</p>'}
+        ${votingDemo.length ? `<details class="acc" style="margin-top:10px"><summary>Примеры вопросов для будущего Совета (${votingDemo.length}) — демонстрация, в работу не идут</summary>
+          ${votingDemo.map(v => transitionVoteCard(v, true)).join('')}
+        </details>` : ''}
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h2>Реестр решений</h2>
+        <div class="sub">Каждая запись содержит основание, результат и эффект: что именно изменилось в тарифной сетке или правилах. Записи с пометкой «пример для ознакомления» — демонстрационные и не являются действующими актами.</div>
+        ${DB.decisions.filter(d => !d.demo).map(decisionRow).join('') || '<p class="mini">Решений переходного периода пока нет. Первое появится после утверждения тарифного проекта.</p>'}
+        ${DB.decisions.filter(d => d.demo).length ? '<details class="acc" style="margin-top:10px"><summary>Примеры записей реестра (' + DB.decisions.filter(d => d.demo).length + ')</summary>' + DB.decisions.filter(d => d.demo).map(decisionRow).join('') + '</details>' : ''}
+      </div>
+    </div>
+    <div>
+      ${transitionCard}
+      <div class="card" style="margin-top:16px">
+        <h2>Места в Совете</h2>
+        <div class="sub">После выборов здесь появятся карточки девяти избранных членов: компания, округ, комитет, дата избрания и число голосов.</div>
+        <div class="grid g2" style="gap:8px">
+          ${Array.from({ length: 9 }).map((_, i) => '<div class="member" style="opacity:.75"><div class="row" style="gap:10px"><div class="avatar">?</div><div><div class="mini">Место ' + (i + 1) + '</div><div class="mini">вакантно до выборов</div></div></div></div>').join('')}
+        </div>
+        <div class="note" style="margin-top:12px">Кандидат для первых выборов: статус «Верифицирован», отсутствие применённых санкций, заявка от компании. Квоты: ЮФО/СКФО — 2, СЗФО — 2, ЦФО — 1, ПФО — 1, УФО/СФО — 2, ДФО — 1.</div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h2>Журнал платформы</h2>
+        <div class="tbl-scroll" style="max-height:240px"><table><tbody>
+          ${DB.log.slice(0, 12).map(x => '<tr><td class="mini" style="white-space:nowrap">' + dt(x.at) + '</td><td class="mini">' + esc(x.text) + '</td></tr>').join('')}
+        </tbody></table></div>
+      </div>
+    </div>
+  </div>
+  ${demoSwitch}`;
+}
+
+function memberRow(m) {
+  return `<div class="member" style="margin-bottom:8px">
+    <div class="row" style="gap:10px;align-items:flex-start">
+      <div class="avatar">${m.name.split(' ')[0][0] + (m.name.split(' ')[1] || '')[0]}</div>
+      <div style="flex:1">
+        <div class="row between"><b>${esc(m.name)}</b>${m.chair ? '<span class="badge b-gold">Председатель</span>' : ''}</div>
+        <div class="mini">${esc(m.company)} · ${esc(m.city)} (${esc(m.district)})</div>
+        <div class="mini">${esc(m.committee)} · выдвинут ${fmt(m.electedBy)} голосами · полномочия до ${dt(m.until)}</div>
+      </div>
+    </div>
+  </div>`;
+}
+function decisionRow(d) {
+  return `<div class="member" style="margin-bottom:8px">
+    <div class="row between"><b>${esc(d.title)}</b><span class="row" style="gap:6px">${d.demo ? '<span class="badge b-mut">пример для ознакомления</span>' : ''}<span class="badge ${/Принято|Утверждено|избран/i.test(d.result || '') ? 'b-ok' : 'b-bad'}">${esc(d.result)}</span></span></div>
+    <div class="mini" style="margin-top:4px">${d.id} · ${esc(COUNCIL_RULES.kinds[d.kind] || 'решение')} · ${dt(d.at)}</div>
+    <div class="mini" style="margin-top:4px">${esc(d.effect)}</div>
+  </div>`;
+}
+function payloadText(v) {
+  return Object.entries(v.payload || {}).map(([k, val]) => {
+    if (k === 'floor') return 'минимальная ставка: <b>' + money(val) + '</b>';
+    if (k === 'floorRoute') return 'плечо: <b>' + esc(val) + '</b>';
+    if (k === 'floorType') return 'тип: <b>' + esc(val) + '</b>';
+    if (k === 'requireOsgop') return 'обязательный ОСГОП: <b>да</b>';
+    if (k === 'effective') return 'с даты: <b>' + dt(val) + '</b>';
+    const meta = TARIFF_META.find(x => x[0] === k);
+    return (meta ? meta[1] : k) + ': <b>' + (typeof val === 'number' ? fmt2(val) : esc(String(val))) + '</b>';
+  }).join(' · ');
+}
+function transitionVoteCard(v, isExample) {
+  const t = tally(v);
+  const canApprove = !isExample && !v.demo && ROLE === 'admin' && v.kind === 'tariff' && v.status === 'voting';
+  return `<div class="vote-box" style="margin-bottom:12px">
+    <div class="row between">
+      <div><span class="badge ${v.kind === 'tariff' ? 'b-gold' : v.kind === 'charter' ? 'b-bad' : 'b-info'}">${esc(COUNCIL_RULES.kinds[v.kind])}</span>
+        <span class="mini"> · ${v.id} · внесено ${dt(v.created)} · ${esc(v.author)}</span></div>
+      <span class="badge ${t.passed ? 'b-ok' : 'b-warn'}">${t.passed ? 'решение утверждено' : 'обсуждение до ' + dt(v.deadline)}</span>
+    </div>
+    <div style="margin:10px 0 6px;font-weight:700">${esc(v.title)}</div>
+    <div class="mini" style="margin-bottom:8px">${esc(v.summary)}</div>
+    ${v.payload && Object.keys(v.payload).length ? '<div class="mini" style="margin-bottom:10px">Предмет решения: ' + payloadText(v) + '</div>' : ''}
+    <div class="mini" style="margin-bottom:10px">${isExample || v.demo ? 'Демонстрационный вопрос: показывает форму карточки и пороги. В работу не идёт.' : 'Для утверждения нужен Совет: порог ' + t.need + ' из ' + COUNCIL_RULES.seats + ', кворум ' + COUNCIL_RULES.quorum + '. После выборов вопрос передаётся Совету автоматически.'}</div>
+    ${v.status === 'voting'
+      ? (canApprove
+        ? '<button class="btn pri" onclick="approveTransition(\'' + v.id + '\')">Утвердить в переходный период (Администрация)</button>'
+        : '<span class="badge b-mut">ожидает решения</span>')
+      : '<span class="badge b-ok">в реестре решений</span>'}
+  </div>`;
+}
+function approveTransition(id) {
+  const v = DB.votes.find(x => x.id === id);
+  if (!v || v.status !== 'voting') return;
+  v.status = 'passed';
+  v.result = { for: 0, against: 0, abstain: 0, decision: 'Утверждено Администрацией (переходный период)', at: todayISO() };
+  applyDecision(v, 'Утверждено Администрацией · переходный период');
+  DB.log.unshift({ at: todayISO(), text: 'Переходный период: утверждено решение ' + v.id + ' — ' + v.title + '.' });
+  sbPushVote(v); sbPushTariff();
+  save(); render();
+  toast('Решение ' + v.id + ' утверждено в переходный период. Тарифная сетка обновлена, запись добавлена в реестр решений.', 'ok');
+}
+function scheduleElections() {
+  const pr = electionProgress();
+  if (!pr.ready) { toast('Выборы назначаются при ' + pr.need + ' реальных верифицированных перевозчиках. Сейчас: ' + pr.n + '.', 'bad'); return; }
+  DB.settings.elections = { announced: todayISO(), candidatesDeadline: addDays(todayISO(), 20), voteDeadline: addDays(todayISO(), 35) };
+  DB.log.unshift({ at: todayISO(), text: 'Назначены выборы Совета перевозчиков: выдвижение до ' + dt(DB.settings.elections.candidatesDeadline) + ', голосование до ' + dt(DB.settings.elections.voteDeadline) + '.' });
+  sbPushSettings();
+  save(); render();
+  toast('Выборы назначены. Выдвижение кандидатов — 20 дней, голосование участников — 15 дней.', 'ok');
+}
+function publishCouncil() {
+  const cands = realVerified().slice(0, 9);
+  if (cands.length < 9) { toast('Для публикации состава нужно минимум 9 кандидатов. Сейчас: ' + cands.length + '.', 'bad'); return; }
+  DB.members = cands.map((c, i) => ({
+    id: 'M-' + (i + 1), name: c.name, company: c.name, city: c.city, district: c.region, committee: ['Тарифный комитет', 'Комитет по качеству', 'Комитет по цифровизации'][i % 3],
+    until: addDays(todayISO(), COUNCIL_RULES.termMonths * 30), electedBy: 0, chair: i === 0, role: i === 0 ? 'Председатель Совета' : 'Член Совета'
+  }));
+  DB.settings.elections.completed = todayISO();
+  DB.settings.demoCouncil = false;
+  DB.log.unshift({ at: todayISO(), text: 'Опубликован избранный состав Совета перевозчиков (' + DB.members.length + ' членов). Переходный период завершён.' });
+  sbPushSettings();
+  save(); render();
+  toast('Состав Совета опубликован. Переходный период завершён — решения принимаются голосованием.', 'ok');
+}
+function toggleDemoCouncil() {
+  DB.settings.demoCouncil = !DB.settings.demoCouncil;
+  if (DB.settings.demoCouncil && ROLE !== 'council' && ROLE !== 'admin') { ROLE = 'council'; Store.set('ks_role', ROLE); $('#roleSel').value = 'council'; }
+  sbPushSettings();
+  save(); render();
+  toast(DB.settings.demoCouncil ? 'Учебный режим включён: показана механика голосования.' : 'Учебный режим выключен.', 'ok');
+}
+window.realVerified = realVerified;
+window.approveTransition = approveTransition;
+[scheduleElections, publishCouncil, toggleDemoCouncil].forEach(f => window[f.name] = f);
+
+function roster(v) {
+  const cls = { 'for': 'b-ok', 'against': 'b-bad', 'abstain': 'b-mut', 'none': 'b-warn' };
+  const lbl = { 'for': 'За', 'against': 'Против', 'abstain': 'Воздерж.', 'none': 'Не голосовал' };
+  return DB.members.map(m => '<span class="badge ' + cls[v.votes[m.id] || 'none'] + '" title="' + esc(m.name) + '">' + m.name.split(' ')[0] + ': ' + lbl[v.votes[m.id] || 'none'] + '</span>').join(' ');
+}
+function voteCard(v, canVote) {
+  const t = tally(v);
+  const pct = n => Math.round(n / COUNCIL_RULES.seats * 100);
+  const my = v.votes[VOTE_AS] || 'none';
+  return `<div class="vote-box" style="margin-bottom:12px">
+    <div class="row between"><div><span class="badge ${v.kind === 'tariff' ? 'b-gold' : v.kind === 'charter' ? 'b-bad' : 'b-info'}">${esc(COUNCIL_RULES.kinds[v.kind])}</span>
+      <span class="mini"> · ${v.id} · внесено ${dt(v.created)} · ${esc(v.author)} · до ${dt(v.deadline)} (${daysLeft(v.deadline)} дн.)</span></div>
+      ${t.passed ? '<span class="badge b-ok">порог набран</span>' : t.expired ? '<span class="badge b-bad">срок истёк</span>' : '<span class="badge b-warn">голосование идёт</span>'}</div>
+    <div style="margin:10px 0 6px;font-weight:700">${esc(v.title)}</div>
+    <div class="mini" style="margin-bottom:8px">${esc(v.summary)}</div>
+    ${v.payload && Object.keys(v.payload).length ? '<div class="mini" style="margin-bottom:10px">Предмет решения: ' + payloadText(v) + '</div>' : ''}
+    <div class="vote-bar">
+      <i style="width:${pct(t['for'])}%;background:#2fbf71">${t['for'] ? 'За ' + t['for'] : ''}</i>
+      <i style="width:${pct(t['against'])}%;background:#ef5350">${t['against'] ? 'Против ' + t['against'] : ''}</i>
+      <i style="width:${pct(t.abstain)}%;background:#93a7c2">${t.abstain ? 'Возд. ' + t.abstain : ''}</i>
+    </div>
+    <div class="mini" style="margin-top:6px">Нужно «за»: <b>${t.need} из ${COUNCIL_RULES.seats}</b> · Проголосовало: <b>${t.cast}</b>${t.quorum ? ' (кворум собран)' : ' (кворум не собран)'}</div>
+    <div style="margin-top:10px">${roster(v)}</div>
+    ${canVote && v.status === 'voting' ? `<hr>
+      <div class="row">
+        <span class="mini">Голосовать от имени:</span>
+        <select style="width:auto" onchange="setVoteAs(this.value)">${DB.members.map(m => '<option value="' + m.id + '" ' + (VOTE_AS === m.id ? 'selected' : '') + '>' + esc(m.name) + '</option>').join('')}</select>
+        <button class="btn sm ${my === 'for' ? 'ok' : ''}" onclick="castVote('${v.id}','for')">За</button>
+        <button class="btn sm ${my === 'against' ? 'bad' : ''}" onclick="castVote('${v.id}','against')">Против</button>
+        <button class="btn sm" onclick="castVote('${v.id}','abstain')">Воздержаться</button>
+      </div>` : ''}
+  </div>`;
+}
+function setVoteAs(id) { VOTE_AS = id; toast('Голосование от имени: <b>' + esc(DB.members.find(m => m.id === id).name) + '</b>'); render(); }
+window.setVoteAs = setVoteAs;
+function castVote(id, choice) {
+  const v = DB.votes.find(x => x.id === id);
+  v.votes[VOTE_AS] = choice === v.votes[VOTE_AS] ? 'none' : choice;
+  if (v.votes[VOTE_AS] === 'none') delete v.votes[VOTE_AS];
+  const t = tally(v);
+  const m = DB.members.find(x => x.id === VOTE_AS);
+  DB.log.unshift({ at: todayISO(), text: 'Голос по ' + v.id + ': ' + m.name + ' — «' + choice + '».' });
+  sbPushBallot(id, VOTE_AS, v.votes[VOTE_AS]); sbPushVote(v);
+  if (t.quorum && t.passed && v.status === 'voting') {
+    v.status = 'passed'; v.result = { for: t['for'], against: t['against'], abstain: t.abstain, decision: 'Принято', at: todayISO() };
+    applyDecision(v);
+    sbPushVote(v); sbPushTariff();
+    toast('<b>Решение ' + v.id + ' принято</b> (' + t['for'] + '/' + COUNCIL_RULES.seats + '). Тарифная сетка и реестр решений обновлены.', 'ok');
+    if (v.payload && (v.payload.fuelPrice || v.payload.marginBase)) toast('Калькулятор пересчитан по новой сетке: ДТ ' + fmt2(v.payload.fuelPrice || DB.tariff.val.fuelPrice) + ' ₽/л, маржа ' + fmt2(v.payload.marginBase || DB.tariff.val.marginBase) + '%.');
+  } else {
+    toast('Голос учтён: ' + (choice === 'for' ? 'за' : choice === 'against' ? 'против' : 'воздержался') + '. Осталось «за» до порога: ' + Math.max(0, t.need - t['for']));
+  }
+  save(); render();
+}
+function proposeForm() {
+  openModal('Внесение предложения', `
+    <div class="note">${councilPhase() === 'demo' || DB.settings.demoCouncil
+      ? 'Предложение публикуется для обсуждения на ' + COUNCIL_RULES.voteDays + ' дней и ставится на голосование Совета.'
+      : 'До избрания Совета предложение публикуется как открытое обсуждение. Тарифные решения в переходный период утверждает Администрация строго по расчёту; после выборов вопрос передаётся Совету.'}</div>
+    <div class="grid g2" style="margin-top:12px">
+      <div class="field"><label>Категория вопроса</label><select id="np_kind" onchange="proposeKinds()">
+        <option value="tariff">Тарифное регулирование (порог 6/9)</option>
+        <option value="org">Работа платформы (порог 5/9)</option>
+        <option value="charter">Изменение Устава (порог 7/9)</option>
+      </select></div>
+      <div class="field"><label>Срок обсуждения до</label><input type="date" id="np_deadline" value="${addDays(todayISO(), COUNCIL_RULES.voteDays)}"></div>
+    </div>
+    <div class="field"><label>Название (формулировка решения)</label><input type="text" id="np_title" value=""></div>
+    <div class="field"><label>Обоснование</label><textarea id="np_summary" rows="3"></textarea></div>
+    <div id="np_tariff" class="grid g2">
+      <div class="field"><label>Цена ДТ, ₽/л</label><input type="number" id="np_fuel" value="${DB.tariff.val.fuelPrice}" step="0.01"></div>
+      <div class="field"><label>Базовая маржа, %</label><input type="number" id="np_margin" value="${DB.tariff.val.marginBase}" step="0.5"></div>
+      <div class="field"><label>Минимальная ставка по плечу (необязательно)</label><input type="number" id="np_floor" value="0"></div>
+      <div class="field"><label>Плечо и тип</label><input type="text" id="np_route" value="" placeholder="Новороссийск→Москва, 40′HC"></div>
+    </div>
+  `, '<button class="btn pri" onclick="proposeCreate()">Опубликовать предложение</button><button class="btn" onclick="closeModal()">Отмена</button>');
+  proposeKinds();
+}
+function proposeKinds() { const k = $('#np_kind').value; $('#np_tariff').style.display = k === 'tariff' ? '' : 'none'; }
+function proposeCreate() {
+  const kind = $('#np_kind').value;
+  const title = $('#np_title').value.trim();
+  if (title.length < 10) { toast('Сформулируйте название проекта решения', 'bad'); return; }
+  const payload = {};
+  if (kind === 'tariff') {
+    payload.fuelPrice = num($('#np_fuel').value); payload.marginBase = num($('#np_margin').value);
+    const fl = num($('#np_floor').value);
+    if (fl > 0) { const r = $('#np_route').value.split(','); payload.floorRoute = (r[0] || '').trim(); payload.floorType = (r[1] || '').trim(); payload.floor = fl; }
+  }
+  const ids = DB.votes.map(v => parseInt(String(v.id).replace(/\D+/g, '').slice(-2), 10) || 10);
+  const v = {
+    id: (kind === 'tariff' ? 'ТАР' : kind === 'charter' ? 'УСТ' : 'ОРГ') + '-2026-' + String(Math.max(10, ...ids) + 1),
+    kind, title, summary: $('#np_summary').value.trim() || 'Обоснование прилагается отдельным расчётом.',
+    author: ROLE === 'admin' ? 'Администрация платформы' : (DB.members.find(m => m.id === VOTE_AS) || { name: 'Участник' }).name,
+    created: todayISO(), deadline: $('#np_deadline').value, payload, status: 'voting', votes: {}
+  };
+  DB.votes.unshift(v);
+  DB.log.unshift({ at: todayISO(), text: 'Внесено предложение ' + v.id + ': ' + v.title + '.' });
+  sbPushVote(v);
+  save(); closeModal(); render(); toast('Предложение ' + v.id + ' опубликовано' + (DB.settings.demoCouncil ? ' для голосования' : ' как открытое обсуждение'), 'ok');
+}
+[castVote, proposeForm, proposeKinds, proposeCreate].forEach(f => window[f.name] = f);
+
+/* ============================================================
+   ВКЛАДКА 5. ДОКУМЕНТЫ
+   ============================================================ */
+const DOCS = [
+  {
+    id: 'charter', name: 'Устав платформы «Контейнерный Союз»', ver: 'ред. 1.0, 15.10.2026', status: 'Проект к принятию Советом',
+    about: 'Основной документ: статус платформы, права и обязанности участников, органы управления, порядок нормотворчества.',
+    points: [
+      'Платформа — добровольное некоммерческое объединение перевозчиков; не является регулятором и стороной договоров перевозки.',
+      'Цели: прозрачная и экономически обоснованная цена, защита от демпинга, единые регламенты, цифровой документооборот.',
+      'Участники: перевозчики (полные права после верификации), грузовладельцы (доступ к реестру и бирже), наблюдатели.',
+      'Органы: Общее собрание участников (высший), Совет перевозчиков из 9 членов (исполнительно-нормотворческий), профильные комитеты, Ревизионная комиссия, Арбитраж, Администрация платформы.',
+      'Тарифная сетка — расчётный ориентир, утверждается решениями Совета; принудительное применение цен к третьим лицам недопустимо (ст. 10 Закона № 135-ФЗ).',
+      'Поправки в Устав — 7 из 9 голосов членов Совета и обязательная публикация на 7 дней.',
+      'Выход участника свободный; имущество не распределяется, платформа финансируется из взносов и сервисов по решению Совета.'
+    ]
+  },
+  {
+    id: 'rules', name: 'Правила платформы', ver: 'ред. 1.0', status: 'Проект к принятию', about: 'Повседневные правила работы: регистрация, верификация, поведение, ответственность.',
+    points: [
+      'Регистрация: ИП/ЮЛ, ИНН, сведения о парке; статусы «Ожидает верификации» → «Верифицирован» → «Приостановлен».',
+      'Верификация: ЕГРЮЛ/ЕГРИП, ОСГОП, лицензии и допуски, отсутствие налоговой задолженности, готовность к ЭТрН.',
+      'Запрещено: фальсификация сведений, рейсы без обязательного страхования, «серые» схемы оплаты труда, перекредитовка чужих ставок.',
+      'Общение и споры — только через платформу; уведомление о неисполнении рейса в течение 2 часов.',
+      'Меры воздействия: предупреждение, снижение рейтинга, ограничение доступа к заявкам, приостановка, исключение.',
+      'Конфликт интересов: член Совета не голосует по вопросу, затрагивающему его компанию (абстенция обязательна).'
+    ]
+  },
+  {
+    id: 'council', name: 'Положение о Совете перевозчиков', ver: 'ред. 1.0', status: 'Проект к принятию', about: 'Состав, избрание, пороги голосования, комитеты.',
+    points: [
+      '9 членов; избираются Общим собранием на 24 месяца методом куммулятивного голосования, с территориальными квотами (ЮФО/СКФО — 2, СЗФО — 2, ЦФО — 1, ПФО — 1, УФО/СФО — 2, ДФО — 1).',
+      'Кандидат: рейтинг не ниже 80, стаж на платформе не менее 12 мес., отсутствие применённых санкций.',
+      'Кворум — 7 членов. Пороги: тарифные решения — 6, вопросы платформы — 5, Устав — 7.',
+      'Комитеты: Тарифный (сетка и минимальные ставки), по качеству и арбитражу, по цифровизации и документам.',
+      'Ротация: переизбрание не более 6 из 9 мест в один цикл; Председатель — на 6 месяцев.',
+      'Решения обязательны для участников только в части внутренних правил платформы и использования сервисов.'
+    ]
+  },
+  {
+    id: 'tariff', name: 'Регламент расчёта тарифной сетки и минимальной ставки', ver: 'ред. 2.3', status: 'Действует', about: 'Методика калькулятора: какие данные берутся и как меняются значения.',
+    points: [
+      'Источники: Росстат (средняя цена ДТ), ПП РФ № 843 (тариф «Платон»), фактические данные перевозчиков платформы (расход, ремонт, простои), отраслевые бенчмарки ставок.',
+      'Пересмотр — не чаще одного раза в месяц и не реже одного раза в квартал; внеочередной — при изменении ДТ более чем на 3% или «Платона».',
+      'Каждая строка сетки имеет версию, дату, основание (номер решения Совета) и визуальную историю изменений.',
+      'Минимальная ставка по плечу рассчитывается как себестоимость + минимальная маржа и публикуется в реестре решений.',
+      'Сетка носит рекомендательный характер; участник вправе применить свой расчёт, если он обоснован в карточке рейса.'
+    ]
+  },
+  {
+    id: 'rating', name: 'Регламент рейтинга и арбитража', ver: 'ред. 1.1', status: 'Действует', about: 'Формула рейтинга, уровни, санкции, порядок споров.',
+    points: [
+      'Формула: 7 показателей (сроки 28%, срывы 18%, отзывы 14%, стаж 10%, дисциплина 12%, прозрачность 10%, объём 8%).',
+      'Пересчёт — после каждого закрытого рейса; спорный рейтинг замораживается до решения Арбитража.',
+      'Уровни: Платина 90+, Золото 80+, Серебро 70+, Бронза 60+, ниже 60 — «Наблюдение».',
+      'Арбитраж из 3 членов Совета (не коммерческих сторон спора); срок рассмотрения — 10 рабочих дней, решение публикуется обезличенно.',
+      'Крупные споры (свыше 500 000 ₽) — с обязательным привлечением третейского органа.'
+    ]
+  },
+  {
+    id: 'reg', name: 'Регламент участника: регистрация и верификация', ver: 'ред. 1.0', status: 'Действует', about: 'Пошаговый чек-лист входа на платформу.',
+    points: [
+      'Шаг 1: заявка (ИНН, форма, парк, контейнерные площадки, допуски).',
+      'Шаг 2: автопроверка ИНН и выписки, ручная проверка документов администрацией (до 3 рабочих дней).',
+      'Шаг 3: подписание электронного согласия с Уставом и Правилами, стаж-балл «прозрачности».',
+      'Шаг 4: доступ к бирже (со статусом «Верифицирован»), стартовый уровень рейтинга — «Бронза» при отсутствии истории.',
+      'Шаг 5: первый рейс под наблюдением куратора из профильного комитета.'
+    ]
+  },
+  {
+    id: 'contract', name: 'Типовой договор-перевозки и оферта биржи грузов', ver: 'шаблон', status: 'Проект', about: 'Юридическая форма рейсов, совершаемых через платформу.',
+    points: [
+      'Платформа — информационный посредник: договор заключается напрямую между грузовладельцем и перевозчиком.',
+      'Существенные условия: маршрут, тип контейнера, вес, срок, ставка, норма простоя (4 ч) и плата за сверхнормативный простой (1 500 ₽/ч), порядок оплаты.',
+      'Обязательна ЭТрН; первичные документы — по Правилам платформы.',
+      'Ответственность перевозчика — в пределах, установленных УАТ и ГК РФ; страхование ОСГОП обязательно.',
+      'Акцепт оферты — подача ставки или назначение рейса; все изменения условий — только письменно в карточке рейса.'
+    ]
+  },
+  {
+    id: 'ethics', name: 'Кодекс добросовестной конкуренции', ver: 'ред. 1.0', status: 'Проект', about: 'Демпинг, сговор, честность данных.',
+    points: [
+      'Запрет на согласованные действия по ценам, разделу рынка и бойкотированию участников (ст. 11 Закона № 135-ФЗ).',
+      'Демпингом признаётся ставка ниже минимальной ставки платформы, обоснованной по методике калькулятора.',
+      'Демпинговые заявки помечаются, направляются в арбитраж и учитываются в показателе «дисциплина» рейтинга.',
+      'Поощряется раскрытие данных о себестоимости в обезличенном виде — это влияет на «прозрачность» и на качество тарифной сетки.'
+    ]
+  },
+  {
+    id: 'privacy', name: 'Политика конфиденциальности и обработки данных', ver: 'ред. 1.0', status: 'Проект', about: '152-ФЗ, режим персональных и коммерческих данных.',
+    points: [
+      'Обрабатываются данные, необходимые для участия: реквизиты, контакты, сведения о рейсах, персональные данные представителей.',
+      'Коммерческие данные (ставки, себестоимость) раскрываются только в обезличенном и агрегированном виде.',
+      'Данные обрабатываются на серверах в РФ; согласие — электронное, отзывается в кабинете.',
+      'Публикация реестра перевозчиков осуществляется в объёме, указанном при регистрации.'
+    ]
+  },
+  {
+    id: 'roadmap', name: 'Дорожная карта запуска (бесплатный хостинг)', ver: '15.10.2026', status: 'Черновик', about: 'Как проект публикуется без вложений и развивается онлайн.',
+    points: [
+      'Этап 1 (готово в прототипе): интерфейс, калькулятор, реестр, биржа, Совет, документы — в одном HTML-файле, работает без сервера.',
+      'Этап 2 (бесплатно): размещение статической версии на GitHub Pages / Cloudflare Pages, поддомен вида kontsovet.pages.dev или container-union.pages.dev.',
+      'Этап 3 (бесплатно): коллективное хранилище и аккаунты — Supabase Free (Postgres, авторизация, бесплатный тариф), либо Google-таблица как быстрый бэкенд.',
+      'Этап 4: Telegram-бот и канал для уведомлений о голосованиях и заявках (бесплатно).',
+      'Этап 5: юридическая оболочка — протокол о создании объединения, ЭДО, публикация реестра решений.'
+    ]
+  }
+];
+function viewDocs() {
+  return `
+  <div class="note">Пакет документов — <b>проекты</b>. До их принятия Советом платформа работает в переходном периоде. Полные тексты подготовлены отдельным файлом «Документы_Контейнерный_Союз.md» — его можно править онлайн и публиковать вместе с платформой.</div>
+  <div class="note warn" style="margin-top:12px"><b>Текущий статус управления:</b> ${councilPhase() === 'elected' ? 'работает избранный Совет перевозчиков.' : 'переходный период — Совет формируется. Тарифную сетку ведёт Администрация строго по методике (Регламент расчёта), тарифные решения утверждаются с публикацией расчёта «до/после». Выборы назначаются при ' + electionProgress().need + ' реальных верифицированных перевозчиках (сейчас ' + electionProgress().n + ').'}</div>
+  <div class="grid g2" style="margin-top:16px">
+    ${DOCS.map(d => `<div class="card">
+      <div class="row between"><h3 style="margin:0">${esc(d.name)}</h3><span class="badge ${d.status === 'Действует' ? 'b-ok' : d.status === 'Проект к принятию' || d.status === 'Проект к принятию Советом' ? 'b-warn' : 'b-mut'}">${esc(d.status)}</span></div>
+      <div class="mini" style="margin:6px 0 10px">${esc(d.about)} · ${esc(d.ver)}</div>
+      <details class="acc"><summary>Ключевые положения</summary><ul>${d.points.map(p => '<li>' + esc(p) + '</li>').join('')}</ul></details>
+      <button class="btn sm" onclick="docFull('${d.id}')">Полный текст (краткая редакция на экране)</button>
+    </div>`).join('')}
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>Правовая рамка проекта — что можно и чего нельзя</h3>
+    <div class="grid g2">
+      <div>
+        <p class="mini"><b>Можно:</b></p>
+        <ul style="padding-left:20px" class="mini">
+          <li>рассчитывать и публиковать методику экономически обоснованной ставки;</li>
+          <li>вести рейтинг добросовестности и реестр участников — с их согласия;</li>
+          <li>разрабатывать и принимать внутренние правила участия (Устав, Правила, регламенты);</li>
+          <li>публиковать рекомендованные (индикативные) ставки и помечать демпинг;</li>
+          <li>использовать типовой договор-перевозки между грузовладельцем и перевозчиком.</li>
+        </ul>
+      </div>
+      <div>
+        <p class="mini"><b>Нельзя (без изменения законодательства):</b></p>
+        <ul style="padding-left:20px" class="mini">
+          <li>обязывать перевозчиков применять определённые цены — это нарушает свободу договора и антимонопольные запреты;</li>
+          <li>координировать экономическую деятельность участников (ст. 11 Закона № 135-ФЗ);</li>
+          <li>ограничивать доступ к рынку иначе как внутренними правилами собственной платформы;</li>
+          <li>выступать в качестве регулятора или органа власти.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="note warn" style="margin-top:12px">Поэтому модель платформы — «саморегулирование по факту»: наиболее полное регулирование возможно внутри собственной платформы (правила участия, доступ к заявкам, рейтинг, раскрытие данных), а не в отношении всего рынка. Именно так работают многие отраслевые ассоциации и цифровые биржи.</div>
+  </div>`;
+}
+function docFull(id) {
+  const d = DOCS.find(x => x.id === id);
+  openModal(esc(d.name), `<div class="mini" style="margin-bottom:10px">${esc(d.ver)} · статус: ${esc(d.status)}</div>
+    <p class="mini">${esc(d.about)}</p><hr>
+    <ul style="padding-left:20px">${d.points.map(p => '<li style="margin:6px 0" class="mini">' + esc(p) + '</li>').join('')}</ul>
+    <div class="note" style="margin-top:12px">Полная редакция документа входит в пакет «Документы_Контейнерный_Союз.md». Любую формулировку можно изменить решением Совета: создайте предложение во вкладке «Совет перевозчиков» с категорией «Изменение Устава» (порог 7/9).</div>`,
+    '<button class="btn" onclick="closeModal()">Закрыть</button>');
+}
+window.docFull = docFull;
+
+/* ============================================================
+   ВКЛАДКА 6. КАБИНЕТ
+   ============================================================ */
+function viewCabinet() {
+  if (ROLE === 'guest' || ROLE === 'admin') return `<div class="grid g23">
+    <div class="card">
+      <h2>Регистрация перевозчика на платформе</h2>
+      <div class="sub">Участие бесплатное. После верификации открываются реестр, калькулятор, биржа грузов и право выдвижения в Совет.</div>
+      <div class="grid g2">
+        <div class="field"><label>Наименование или ФИО</label><input type="text" id="r_name" value="ООО «Мой Контейнер-Логистик»"></div>
+        <div class="field"><label>Форма</label><select id="r_form"><option>ООО</option><option>ИП</option></select></div>
+        <div class="field"><label>ИНН</label><input type="text" id="r_inn" value="2317999888"></div>
+        <div class="field"><label>Город</label><select id="r_city">${CITIES.map(c => '<option>' + c[0] + '</option>').join('')}</select></div>
+        <div class="field"><label>Федеральный округ</label><select id="r_region"><option>ЮФО</option><option>СКФО</option><option>СЗФО</option><option>ЦФО</option><option>ПФО</option><option>УФО</option><option>СФО</option><option>ДФО</option></select></div>
+        <div class="field"><label>Контакт (телефон или e-mail)</label><input type="text" id="r_contact" value="+7 900 000-00-00"></div>
+        <div class="field"><label>Единиц техники</label><input type="number" id="r_fleet" value="8"></div>
+        <div class="field"><label>Контейнерных площадок</label><input type="number" id="r_cont" value="6"></div>
+      </div>
+      <div class="smallcaps" style="margin:8px 0 4px">Типы контейнеров</div>
+      <div class="row" style="gap:14px">
+        ${['20′', '40′', '40′HC', '45′HC', 'реф'].map((t, i) => '<label class="mini"><input type="checkbox" id="r_t' + i + '" ' + (i < 3 ? 'checked' : '') + '> ' + t + '</label>').join('')}
+      </div>
+      <hr>
+      <div class="chk"><input type="checkbox" id="r_c1"><label for="r_c1" style="margin:0">Прочитал(а) и принимаю Устав и Правила платформы</label></div>
+      <div class="chk"><input type="checkbox" id="r_c2"><label for="r_c2" style="margin:0">Согласен(на) на обработку данных и публикацию карточки в реестре перевозчиков</label></div>
+      <div class="chk"><input type="checkbox" id="r_c3"><label for="r_c3" style="margin:0">Подтверждаю наличие полиса ОСГОП и готовность работать через ЭТрН</label></div>
+      <button class="btn pri" onclick="register()">Отправить заявку на верификацию</button>
+    </div>
+    <div>
+      <div class="card">
+        <h3>Что даёт регистрация</h3>
+        <ul class="mini" style="padding-left:20px">
+          <li>калькулятор ставки с ежемесячно обновляемой тарифной сеткой — без ограничений;</li>
+          <li>рейтинг: отзывы, сроки, срывы и прозрачность формируют ваш уровень;</li>
+          <li>доступ к заявкам и подача ставок на бирже грузов;</li>
+          <li>право выдвижения в Совет перевозчиков при рейтинге 80+ и стаже от 12 месяцев;</li>
+          <li>участие в голосованиях через представителей и в публичных обсуждениях проектов решений.</li>
+        </ul>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>Пошаговый вход</h3>
+        <ol class="tl" style="margin-top:6px">
+          <li>Заявка на платформе (эта форма)</li>
+          <li>Верификация администрацией: ИНН, ОСГОП, допуски — до 3 рабочих дней</li>
+          <li>Присвоение статуса и стартового рейтинга</li>
+          <li>Первый рейс с куратором профильного комитета</li>
+          <li>Полный доступ к бирже и голосованиям</li>
+        </ol>
+      </div>
+    </div>
+  </div>${ROLE === 'admin' ? adminPanel() : ''}`;
+
+  if (ROLE === 'carrier') {
+    const c = DB.carriers.find(x => x.id === (ME || 'C-101'));
+    const r = rating(c);
+    const eligible = r.score >= 80 && c.metrics.tenureMonths >= 12;
+    const myBids = DB.loads.filter(l => l.carrierId === c.id);
+    return `<div class="grid g23">
+      <div>
+        <div class="card">
+          <div class="row between"><div><h2 style="margin:0">${esc(c.name)}</h2><div class="mini">${c.form}, ИНН ${esc(c.inn)} · ${esc(c.city)} · статус: <span class="badge ${STATUS_LABEL[c.status][1]}">${STATUS_LABEL[c.status][0]}</span></div></div>
+            <div style="text-align:right"><div style="font-size:30px;font-weight:900;color:var(--acc)">${r.score}</div><div class="mini">${starsHtml(r.stars)} ${r.level}</div></div></div>
+          <hr>
+          <div class="grid g3">
+            <div class="kpi" style="padding:10px"><div class="k" style="font-size:18px">${c.fleet}</div><div class="l">единиц техники</div></div>
+            <div class="kpi" style="padding:10px"><div class="k" style="font-size:18px">${c.metrics.completed}</div><div class="l">рейсов выполнено</div></div>
+            <div class="kpi" style="padding:10px"><div class="k" style="font-size:18px">${c.metrics.onTime}%</div><div class="l">доставка в срок</div></div>
+          </div>
+          <h3 style="margin-top:14px">Как поднять рейтинг</h3>
+          <table><tbody>
+            ${Object.entries(c.docs).map(([k, v]) => '<tr><td>' + ({ egrul: 'Выписка ЕГРЮЛ/ЕГРИП', osgop: 'Полис ОСГОП', ports: 'Допуск в порты', etrn: 'ЭТрН', taxes: 'Налоговая отчётность' })[k] + '</td><td style="text-align:right">' + (v ? '<span class="badge b-ok">ок</span>' : '<span class="badge b-warn">загрузить в кабинет</span>') + '</td></tr>').join('')}
+          </tbody></table>
+          <div class="note" style="margin-top:12px"><b>Выдвижение в Совет:</b> ${eligible ? 'условия выполнены — можно подать заявку в Совет перевозчиков (рейтинг ≥ 80, стаж ≥ 12 мес.).' : 'требуется рейтинг не ниже 80 (сейчас ' + r.score + ') и стаж от 12 месяцев (сейчас ' + c.metrics.tenureMonths + ' мес.).'}</div>
+          <button class="btn" style="margin-top:12px" ${eligible ? '' : 'disabled'} onclick="toast('Заявка на выдвижение подана. Сбор подписей участников — 20 дней.','ok')">Подать заявку в Совет перевозчиков</button>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <h3>Мои рейсы и ставки</h3>
+          ${myBids.length ? '<table><tbody>' + myBids.map(l => '<tr><td>' + l.id + '<div class="mini">' + l.from + ' → ' + l.to + '</div></td><td class="mono">' + money(l.rate || 0) + '</td><td><span class="badge b-info">' + l.status + '</span></td></tr>').join('') + '</tbody></table>' : '<p class="mini">Пока нет назначенных рейсов. Откройте вкладку «Грузы», чтобы подать ставку.</p>'}
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <h3>История расчётов</h3>
+          ${DB.calcs.length ? '<table><tbody>' + DB.calcs.slice().reverse().map(x => '<tr><td>' + esc(x.route) + '<div class="mini">' + dt(x.at) + ' · ' + esc(x.type) + ' · ' + x.km + ' км</div></td><td class="mono" style="text-align:right"><b>' + money(x.base) + '</b><div class="mini">' + fmt2(x.perKm) + ' ₽/км</div></td></tr>').join('') + '</tbody></table>' : '<p class="mini">Сохраните расчёт в калькуляторе — он появится здесь.</p>'}
+        </div>
+        <div class="card" style="margin-top:16px">
+          <h3>Документы участника</h3>
+          <ul class="mini" style="padding-left:20px">
+            <li><a href="#" onclick="docFull('contract');return false">Типовой договор-перевозки</a></li>
+            <li><a href="#" onclick="docFull('reg');return false">Регламент регистрации и верификации</a></li>
+            <li><a href="#" onclick="docFull('rating');return false">Регламент рейтинга и арбитража</a></li>
+            <li><a href="#" onclick="docFull('tariff');return false">Регламент расчёта тарифной сетки</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>`;
+  }
+  // council
+  const phase = councilPhase();
+  if (!DB.settings.demoCouncil && phase !== 'elected') {
+    const pr = electionProgress();
+    return `<div class="grid g23">
+      <div class="card">
+        <h2>Совет перевозчиков ещё не избран</h2>
+        <div class="sub">Платформа работает в переходном периоде: тарифная сетка ведётся Администрацией строго по методике, проекты решений публикуются как открытые обсуждения. Выборы будут назначены при достижении <b>${pr.need}</b> реальных верифицированных перевозчиков — сейчас <b>${pr.n}</b>.</div>
+        <div class="bar" style="margin:12px 0 6px"><i style="width:${pr.pct}%"></i></div>
+        <div class="mini">готовность к выборам: <b>${pr.pct}%</b></div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn" onclick="showTab('council')">Переходные положения и обсуждения</button>
+          <button class="btn pri" onclick="toggleDemoCouncil()">Включить учебный режим (механика голосования)</button>
+        </div>
+        <div class="note" style="margin-top:12px">Учебный режим показывает, как Совет будет голосовать после выборов: 9 демонстрационных членов, пороги 6/5/7 и кворум 7. Реальные решения при этом не принимаются.</div>
+      </div>
+      <div class="card">
+        <h3>Что нужно для выборов</h3>
+        <ol class="tl" style="margin-top:8px">
+          <li>${pr.need} реальных верифицированных перевозчиков в реестре (сейчас ${pr.n})</li>
+          <li>Назначение выборов Администрацией: выдвижение кандидатов — 20 дней</li>
+          <li>Кумулятивное голосование участников — 15 дней, квоты по федеральным округам</li>
+          <li>Публикация избранного состава — переход к решениям голосованием</li>
+        </ol>
+        <div class="note" style="margin-top:12px">Кандидат для первых выборов: статус «Верифицирован», отсутствие санкций, заявка от компании. Требование рейтинга 80+ и стажа 12 месяцев применяется со второго цикла.</div>
+      </div>
+    </div>`;
+  }
+  const m = DB.members.find(x => x.id === VOTE_AS) || DB.members[0];
+  const waiting = DB.votes.filter(v => v.status === 'voting' && !v.votes[m.id]);
+  return `<div class="grid g23">
+    <div class="card">
+      <h2>Кабинет члена Совета ${DB.settings.demoCouncil ? '<span class="badge b-mut">УЧЕБНЫЙ РЕЖИМ</span>' : ''}</h2>
+      <div class="sub">${esc(m.name)} · ${esc(m.company)} · ${esc(m.committee)} · полномочия до ${dt(m.until)}</div>
+      <div class="grid g3">
+        <div class="kpi" style="padding:10px"><div class="k" style="font-size:18px">${waiting.length}</div><div class="l">вопросов ждут вашего голоса</div></div>
+        <div class="kpi" style="padding:10px"><div class="k" style="font-size:18px">${Object.keys(DB.votes.reduce((a, v) => { if (v.votes[m.id]) a[v.id] = 1; return a; }, {})).length}</div><div class="l">голосований, где вы участвовали</div></div>
+        <div class="kpi" style="padding:10px"><div class="k" style="font-size:18px">${DB.decisions.length}</div><div class="l">решений в реестре</div></div>
+      </div>
+      ${waiting.length ? '<h3 style="margin-top:14px">Ждут вашего голоса</h3>' + waiting.map(v => '<div class="member" style="margin-bottom:8px"><b>' + esc(v.title) + '</b><div class="mini">' + v.id + ' · до ' + dt(v.deadline) + '</div><button class="btn sm" style="margin-top:6px" onclick="showTab(\'council\')">Перейти к голосованию</button></div>').join('') : '<p class="mini" style="margin-top:12px">Все открытые вопросы рассмотрены.</p>'}
+    </div>
+    <div>
+      <div class="card">
+        <h3>Полномочия члена Совета</h3>
+        <ul class="mini" style="padding-left:20px">
+          <li>вносить проекты решений по тарифам, правилам и работе платформы;</li>
+          <li>голосовать лично, открыто и персонально (голос публикуется);</li>
+          <li>работать в комитетах: тарифном, по качеству и арбитражу, по цифровизации;</li>
+          <li>обязанность: не голосовать по вопросам, затрагивающим собственную компанию.</li>
+        </ul>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>Ограничения</h3>
+        <p class="mini">Решения Совета не могут устанавливать обязательные цены для рынка. Максимум — правила доступа к сервисам платформы, рекомендованные ставки и внутренние санкции (см. «Документы платформы»).</p>
+      </div>
+    </div>
+  </div>`;
+}
+function adminPanel() {
+  const apps = DB.applications.filter(a => a.status === 'pending');
+  const pend = DB.carriers.filter(c => c.status === 'pending');
+  return `<div class="card" style="margin-top:16px">
+    <h2>Администрирование (режим демонстрации)</h2>
+    <div class="sub">Администрация ведёт реестр, проверяет документы, публикует решения Совета и следит за работоспособностью платформы.</div>
+    <h3>Заявки на верификацию</h3>
+    ${(apps.length || pend.length) ? '<table><tbody>' +
+      apps.map(a => `<tr><td><b>${esc(a.name)}</b><div class="mini">${esc(a.city)} · ИНН ${esc(a.inn)} · ${a.fleet} ед. техники · подана ${dt(a.submitted)}</div></td><td>${a.docs ? '<span class="badge b-ok">документы полные</span>' : '<span class="badge b-warn">нужны документы</span>'}</td>
+        <td style="text-align:right"><button class="btn sm ok" onclick="approveApp('${a.id}')">Верифицировать</button> <button class="btn sm bad" onclick="rejectApp('${a.id}')">Отклонить</button></td></tr>`).join('') +
+      pend.map(c => `<tr><td><b>${esc(c.name)}</b><div class="mini">${esc(c.city)} · ИНН ${esc(c.inn)} · ${c.fleet} ед.</div></td><td><span class="badge b-warn">ожидает проверки</span></td>
+        <td style="text-align:right"><button class="btn sm ok" onclick="verifyCarrier('${c.id}')">Верифицировать</button> <button class="btn sm bad" onclick="suspendCarrier('${c.id}')">Отклонить</button></td></tr>`).join('') +
+      '</tbody></table>' : '<p class="mini">Новых заявок нет.</p>'}
+    <hr>
+    <div class="row between">
+      <div><h3 style="margin:0">Демонстрационные данные</h3><div class="mini">Сброс вернёт реестр, тарифную сетку и голосования к исходному состоянию.</div></div>
+      <button class="btn" onclick="sbRefresh()">⟳ Обновить данные из базы</button><button class="btn bad" onclick="resetDemo()">Сбросить демо-данные</button>
+    </div>
+  </div>`;
+}
+function register() {
+  if (!$('#r_c1').checked || !$('#r_c2').checked || !$('#r_c3').checked) { toast('Для регистрации необходимо принять Устав, Правила и подтвердить документы', 'bad'); return; }
+  const types = ['20′', '40′', '40′HC', '45′HC', 'реф'].filter((t, i) => $('#r_t' + i).checked);
+  const c = {
+    id: 'C-' + (200 + DB.carriers.length), name: $('#r_name').value.trim() || 'Новый перевозчик',
+    form: $('#r_form').value, inn: $('#r_inn').value, city: $('#r_city').value, region: $('#r_region').value,
+    fleet: num($('#r_fleet').value), containers: num($('#r_cont').value), types: types.length ? types : ['40′HC'],
+    status: 'pending', joined: todayISO(), demo: false,
+    docs: { egrul: true, osgop: true, ports: false, etrn: true, taxes: true },
+    metrics: { completed: 0, onTime: 100, failures: 0, reviews: 0, tenureMonths: 0, discipline: 80, transparency: 55 }
+  };
+  DB.carriers.push(c); ME = c.id; Store.set('ks_me', ME);
+  DB.applications.unshift({ id: 'З-2026-' + (8 + DB.applications.length), name: c.name, city: c.city, inn: c.inn, fleet: c.fleet, containers: c.containers, submitted: todayISO(), status: 'pending', docs: true });
+  DB.log.unshift({ at: todayISO(), text: 'Новая заявка на верификацию: ' + c.name + ' (' + c.city + ').' });
+  sbPushCarrier(c); sbPushApplication(DB.applications[0]); sbJournal('Новая заявка на верификацию: ' + c.name + ' (' + c.city + ').');
+  save();
+  toast('Заявка отправлена. Статус «Ожидает верификации», проверка — до 3 рабочих дней. Включён демо-режим перевозчика.', 'ok');
+  ROLE = 'carrier'; Store.set('ks_role', ROLE); $('#roleSel').value = 'carrier'; render();
+}
+function approveApp(id) {
+  const a = DB.applications.find(x => x.id === id); a.status = 'verified';
+  const c = DB.carriers.find(x => x.inn === a.inn || x.name === a.name);
+  if (c) { c.status = 'verified'; c.metrics.transparency = Math.min(100, c.metrics.transparency + 25); c.docs.osgop = true; }
+  sbPushApplication(a); if (c) sbPushCarrier(c);
+  DB.log.unshift({ at: todayISO(), text: 'Верифицирован участник: ' + a.name + '.' });
+  save(); render(); toast(a.name + ' верифицирован(а) и добавлен(а) в реестр', 'ok');
+}
+function rejectApp(id) { const a = DB.applications.find(x => x.id === id); a.status = 'rejected'; sbPushApplication(a); save(); render(); toast('Заявка отклонена, заявителю направлены замечания'); }
+function verifyCarrier(id) { const c = DB.carriers.find(x => x.id === id); c.status = 'verified'; c.metrics.transparency = Math.min(100, c.metrics.transparency + 30); sbPushCarrier(c); DB.log.unshift({ at: todayISO(), text: 'Верифицирован перевозчик ' + c.name + '.' }); save(); render(); toast(c.name + ' — статус «Верифицирован»', 'ok'); }
+function suspendCarrier(id) { const c = DB.carriers.find(x => x.id === id); c.status = 'suspended'; sbPushCarrier(c); DB.log.unshift({ at: todayISO(), text: 'Приостановлен статус перевозчика ' + c.name + ' до устранения замечаний.' }); save(); render(); toast(c.name + ': доступ ограничен до устранения замечаний', 'bad'); }
+function resetDemo() { Store.reset(); DB = seed(); save(); CALC = null; render(); toast('Демонстрационные данные восстановлены'); }
+[register, approveApp, rejectApp, verifyCarrier, suspendCarrier, resetDemo].forEach(f => window[f.name] = f);
+
+/* ============================================================
+   Запуск
+   ============================================================ */
+$('#roleSel').value = ROLE;
+$('#roleSel').addEventListener('change', e => {
+  ROLE = e.target.value; Store.set('ks_role', ROLE);
+  if (ROLE === 'carrier' && !ME) { ME = 'C-101'; Store.set('ks_me', ME); }
+  if (ROLE === 'council') VOTE_AS = 'M-1';
+  $('#storeTag').textContent = 'режим: ' + e.target.selectedOptions[0].textContent;
+  toast('Режим просмотра: <b>' + e.target.selectedOptions[0].textContent + '</b>');
+  render();
+});
+$('#storeTag').textContent = 'хранилище: ' + (Store.ls ? 'локальное (браузер)' : 'сессионное (память)');
+render();
+/* ============================================================
+   Онлайн-слой: Supabase (PostgREST) без внешних библиотек.
+   Работает только если в config.js заданы supabaseUrl и supabaseAnonKey.
+   Если их нет — платформа полностью работает в локальном демо-режиме.
+   ============================================================ */
+const CFG = window.KONTREIT_CONFIG || {};
+const ONLINE = !!(CFG.supabaseUrl && CFG.supabaseAnonKey && !/ВСТАВЬТЕ|PASTE/i.test(String(CFG.supabaseUrl) + String(CFG.supabaseAnonKey)));
+const SBBASE = String(CFG.supabaseUrl || '').replace(/\/+$/, '') + '/rest/v1/';
+const sbHead = () => ({ 'apikey': CFG.supabaseAnonKey, 'Authorization': 'Bearer ' + CFG.supabaseAnonKey, 'Content-Type': 'application/json' });
+
+const SB = {
+  async select(t, q) {
+    const r = await fetch(SBBASE + t + (q ? '?' + q : ''), { headers: sbHead() });
+    if (!r.ok) throw new Error(t + ' → HTTP ' + r.status);
+    return r.json();
+  },
+  /* Необязательные таблицы (новые в схеме): их отсутствие не должно ломать загрузку */
+  async selectOpt(t, q) {
+    try { return await SB.select(t, q); } catch (e) { console.warn('[Контейнерный Союз/Supabase] нет таблицы ' + t + ' — пропускаем'); return []; }
+  },
+  async upsert(t, rows, onConflict) {
+    const r = await fetch(SBBASE + t + (onConflict ? '?on_conflict=' + encodeURIComponent(onConflict) : ''), {
+      method: 'POST', headers: { ...sbHead(), 'Prefer': 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(rows)
+    });
+    if (!r.ok) throw new Error(t + ' → HTTP ' + r.status + ': ' + (await r.text()).slice(0, 180));
+    return true;
+  },
+  async patch(t, q, row) {
+    const r = await fetch(SBBASE + t + '?' + q, { method: 'PATCH', headers: { ...sbHead(), 'Prefer': 'return=minimal' }, body: JSON.stringify(row) });
+    if (!r.ok) throw new Error(t + ' → HTTP ' + r.status);
+    return true;
+  }
+};
+
+/* ---------- преобразование записей «база ↔ приложение» ---------- */
+const sbCarrier    = c => ({ id: c.id, name: c.name, form: c.form, inn: c.inn, city: c.city, region: c.region, fleet: c.fleet || 0, containers: c.containers || 0, types: c.types || [], status: c.status, joined: c.joined, docs: c.docs || {}, metrics: c.metrics || {}, demo: !!c.demo });
+const dbCarrier    = r => ({ id: r.id, name: r.name, form: r.form, inn: r.inn, city: r.city, region: r.region, fleet: r.fleet || 0, containers: r.containers || 0, types: r.types || [], status: r.status, joined: r.joined, docs: r.docs || {}, metrics: r.metrics || {}, demo: !!r.demo });
+const sbApplication = a => ({ id: a.id, name: a.name, city: a.city, inn: a.inn, fleet: a.fleet || 0, containers: a.containers || 0, submitted: a.submitted, status: a.status, docs: !!a.docs });
+const dbApplication = r => ({ id: r.id, name: r.name, city: r.city, inn: r.inn, fleet: r.fleet, containers: r.containers, submitted: r.submitted, status: r.status, docs: r.docs });
+const sbLoad       = l => ({ id: l.id, from_city: l.from, to_city: l.to, type: l.type, cargo: l.cargo, weight: l.weight, pickup: l.date, shipper: l.shipper, status: l.status, mode: l.mode, bids: l.bids || 0, floor: l.floor || 0, carrier_id: l.carrierId || null, rate: l.rate || null });
+const dbLoad       = r => ({ id: r.id, from: r.from_city, to: r.to_city, type: r.type, cargo: r.cargo, weight: r.weight, date: r.pickup, shipper: r.shipper, status: r.status, mode: r.mode, bids: r.bids || 0, floor: r.floor || 0, carrierId: r.carrier_id || undefined, rate: r.rate || undefined });
+const sbMember     = m => ({ id: m.id, name: m.name, company: m.company, city: m.city, district: m.district, committee: m.committee, until: m.until, elected_by: m.electedBy, chair: !!m.chair });
+const dbMember     = r => ({ id: r.id, name: r.name, company: r.company, city: r.city, district: r.district, committee: r.committee, until: r.until, electedBy: r.elected_by, chair: r.chair, role: r.chair ? 'Председатель Совета' : 'Член Совета' });
+const sbVote       = v => ({ id: v.id, kind: v.kind, title: v.title, summary: v.summary, author: v.author, created: v.created, deadline: v.deadline, payload: v.payload || {}, status: v.status, result: v.result || null });
+const dbVote       = r => ({ id: r.id, kind: r.kind, title: r.title, summary: r.summary, author: r.author, created: r.created, deadline: r.deadline, payload: r.payload || {}, status: r.status, result: r.result || undefined, votes: {} });
+const sbDecision   = d => ({ id: d.id, title: d.title, kind: d.kind, at: d.at, result: d.result, effect: d.effect });
+const dbDecision   = r => ({ id: r.id, title: r.title, kind: r.kind, at: r.at, result: r.result, effect: r.effect });
+
+/* ---------- служебное ---------- */
+let SB_STATE = ONLINE ? 'connecting' : 'local';
+function sbSafe(promise) {
+  return Promise.resolve(promise)
+    .then(() => { SB_STATE = 'ok'; sbBadge(); return true; })
+    .catch(e => { SB_STATE = 'error'; sbBadge(); console.warn('[Контейнерный Союз/Supabase]', e); toast('Нет связи с базой (' + e.message + '). Данные сохранены локально.', 'bad'); return false; });
+}
+function sbBadge() {
+  const el = $('#storeTag'); if (!el) return;
+  const map = {
+    local: ['хранилище: локальный демо-режим', 'b-mut'],
+    connecting: ['база: подключение…', 'b-warn'],
+    ok: ['база: Supabase · онлайн', 'b-ok'],
+    error: ['база: нет связи (локальный режим)', 'b-bad']
+  };
+  const [txt, cls] = map[SB_STATE] || map.local;
+  el.textContent = txt; el.className = 'tag badge ' + cls;
+}
+function sbJournal(text) { if (ONLINE) sbSafe(SB.upsert('journal', [{ at: todayISO(), text }])); }
+
+/* ---------- чтение всей базы ---------- */
+async function sbLoadAll(quiet) {
+  SB_STATE = 'connecting'; sbBadge();
+  const [tar, car, app, loa, mem, vot, bal, dec, jou, set] = await Promise.all([
+    SB.select('tariff', 'select=*&id=eq.1'),
+    SB.select('carriers', 'select=*&order=fleet.desc'),
+    SB.select('applications', 'select=*&order=submitted.desc'),
+    SB.select('loads', 'select=*&order=created_at.desc'),
+    SB.select('council_members', 'select=*&order=id.asc'),
+    SB.select('votes', 'select=*&order=created.desc'),
+    SB.select('vote_ballots', 'select=*'),
+    SB.select('decisions', 'select=*&order=at.desc'),
+    SB.selectOpt('journal', 'select=*&order=created_at.desc&limit=50'),
+    SB.selectOpt('settings', 'select=*')
+  ]);
+  if (tar.length) DB.tariff = { version: tar[0].version, approved: tar[0].approved, approvedBy: tar[0].approved_by, val: tar[0].val };
+  if (mem.length) DB.members = mem.map(dbMember);
+  if (car.length) DB.carriers = car.map(dbCarrier);
+  if (app.length) DB.applications = app.map(dbApplication);
+  if (loa.length) DB.loads = loa.map(dbLoad);
+  if (vot.length) { DB.votes = vot.map(dbVote); bal.forEach(b => { const v = DB.votes.find(x => x.id === b.vote_id); if (v) v.votes[b.member_id] = b.choice; }); }
+  if (dec.length) DB.decisions = dec.map(dbDecision);
+  if (jou.length) DB.log = jou.map(j => ({ at: j.at, text: j.text }));
+  if (set.length) { DB.settings = DB.settings || {}; set.forEach(s => { DB.settings[s.key === 'council' ? 'demoCouncil' : s.key] = (s.val && typeof s.val === 'object' && 'demoCouncil' in s.val) ? s.val.demoCouncil : s.val; if (s.key === 'council' && s.val) DB.settings = { ...s.val, demoCouncil: !!s.val.demoCouncil }; }); }
+  SB_STATE = 'ok'; sbBadge(); save(); render();
+  if (!quiet) toast('Данные загружены из базы: ' + DB.carriers.length + ' перевозчиков, ' + DB.loads.length + ' заявок, ' + DB.votes.length + ' вопросов Совета', 'ok');
+}
+function sbRefresh() { sbSafe(sbLoadAll()); }
+window.sbRefresh = sbRefresh;
+
+/* ---------- запись (вызывается из действий платформы) ---------- */
+function sbPushCarrier(c)     { if (ONLINE) sbSafe(SB.upsert('carriers', [sbCarrier(c)])); }
+function sbPushApplication(a) { if (ONLINE) sbSafe(SB.upsert('applications', [sbApplication(a)])); }
+function sbPushLoad(l)        { if (ONLINE) sbSafe(SB.upsert('loads', [sbLoad(l)])); }
+function sbPushBid(l, rate, cid, kind) {
+  if (!ONLINE) return;
+  sbSafe(SB.upsert('bids', [{ load_id: l.id, carrier_id: cid, rate: rate, days: null, kind: kind || 'bid' }]));
+  sbPushLoad(l);
+}
+function sbPushBallot(voteId, memberId, choice) { if (ONLINE) sbSafe(SB.upsert('vote_ballots', [{ vote_id: voteId, member_id: memberId, choice: choice || 'none' }], 'vote_id,member_id')); }
+function sbPushVote(v) {
+  if (!ONLINE) return;
+  sbSafe(SB.upsert('votes', [sbVote(v)]));
+  sbSafe(SB.upsert('decisions', DB.decisions.slice(0, 20).map(sbDecision)));
+}
+function sbPushSettings() {
+  if (!ONLINE) return;
+  sbSafe(SB.upsert('settings', [{ key: 'council', val: { demoCouncil: !!DB.settings.demoCouncil, electionThreshold: DB.settings.electionThreshold || 50, elections: DB.settings.elections || null } }], 'key'));
+}
+function sbPushTariff() {
+  if (!ONLINE) return;
+  sbSafe(SB.patch('tariff', 'id=eq.1', { version: DB.tariff.version, approved: DB.tariff.approved, approved_by: DB.tariff.approvedBy, val: DB.tariff.val }));
+}
+
+/* ---------- запуск ---------- */
+if (ONLINE) {
+  sbBadge();
+  sbLoadAll(true).catch(e => { SB_STATE = 'error'; sbBadge(); toast('База недоступна, работаем в локальном режиме. ' + e.message, 'bad'); });
+} else {
+  sbBadge();
+}
+</script>
+</body>
+</html>
