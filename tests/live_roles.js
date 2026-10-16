@@ -61,9 +61,16 @@ async function openSite() {
   d.querySelector('#r_email').value = TEST.email;
   d.querySelector('#r_pass').value = TEST.pass;
   w.register();
-  await sleep(6000);
+  /* регистрация идёт в базу: ждём до 30 секунд и запоминаем, что показал сайт */
+  let seen = [];
+  for (let i = 0; i < 30; i++) {
+    await sleep(1000);
+    const tt = toasts().trim();
+    if (tt && !seen.includes(tt)) seen.push(tt);
+    if (/Перевозчик: /.test(authBox())) break;
+  }
   await T('перевозчик зарегистрировался: аккаунт + роль автоматически', () => {
-    if (!/Перевозчик: /.test(authBox())) throw new Error('бейдж: ' + authBox() + ' | тосты: ' + toasts().slice(0, 160));
+    if (!/Перевозчик: /.test(authBox())) throw new Error('бейдж: ' + authBox() + ' | сообщения сайта: ' + (seen.join(' / ').slice(0, 220) || 'нет'));
     return authBox();
   });
   const cTok = await (await fetch(`${SB}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: TEST.email, password: TEST.pass }) })).json();
