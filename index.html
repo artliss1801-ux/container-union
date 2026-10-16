@@ -2414,47 +2414,64 @@ window.rolesPanel = rolesPanel;
 function register() {
   if (!$('#r_c1').checked || !$('#r_c2').checked || !$('#r_c3').checked) { toast('Для регистрации необходимо принять Устав, Правила и подтвердить документы', 'bad'); return; }
   const types = ['20′', '40′', '40′HC', '45′HC', 'реф'].filter((t, i) => $('#r_t' + i).checked);
-  const c = {
-    id: 'C-' + (200 + DB.carriers.length), name: $('#r_name').value.trim() || 'Новый перевозчик',
-    form: $('#r_form').value, inn: $('#r_inn').value, city: $('#r_city').value, region: $('#r_region').value,
-    fleet: num($('#r_fleet').value), containers: num($('#r_cont').value), types: types.length ? types : ['40′HC'],
-    status: 'pending', joined: todayISO(), demo: false,
-    docs: { egrul: true, osgop: true, ports: false, etrn: true, taxes: true },
-    metrics: { completed: 0, onTime: 100, failures: 0, reviews: 0, tenureMonths: 0, discipline: 80, transparency: 55 }
-  };
   const email = $('#r_email') ? $('#r_email').value.trim() : '';
   const pass = $('#r_pass') ? $('#r_pass').value : '';
   if (ONLINE) {
     if (!email || !pass) { toast('Укажите e-mail и пароль — они создадут личный кабинет', 'bad'); return; }
     if (pass.length < 6) { toast('Пароль должен быть не короче 6 знаков', 'bad'); return; }
   }
-  c.owner = ONLINE && AUTH.userId ? AUTH.userId : null;
-  DB.carriers.push(c); ME = c.id; Store.set('ks_me', ME);
-  DB.applications.unshift({ id: 'З-2026-' + (8 + DB.applications.length), name: c.name, city: c.city, inn: c.inn, fleet: c.fleet, containers: c.containers, submitted: todayISO(), status: 'pending', docs: true });
-  DB.log.unshift({ at: todayISO(), text: 'Новая заявка на верификацию: ' + c.name + ' (' + c.city + ').' });
-  sbPushCarrier(c, 'insert'); sbPushApplication(DB.applications[0], 'insert'); sbJournal('Новая заявка на верификацию: ' + c.name + ' (' + c.city + ').');
-  save();
-  if (!ONLINE) {
-    toast('Заявка отправлена. Статус «Ожидает верификации», проверка — до 3 рабочих дней.', 'ok');
-    ROLE = 'carrier'; Store.set('ks_role', ROLE); render();
+  const c = {
+    id: 'C-' + (200 + DB.carriers.length), name: $('#r_name').value.trim() || 'Новый перевозчик',
+    form: $('#r_form').value, inn: $('#r_inn').value, city: $('#r_city').value, region: $('#r_region').value,
+    fleet: num($('#r_fleet').value), containers: num($('#r_cont').value), types: types.length ? types : ['40′HC'],
+    status: 'pending', joined: todayISO(), demo: false, owner: ONLINE ? null : undefined,
+    docs: { egrul: true, osgop: true, ports: false, etrn: true, taxes: true },
+    metrics: { completed: 0, onTime: 100, failures: 0, reviews: 0, tenureMonths: 0, discipline: 80, transparency: 55 }
+  };
+  const app = { id: 'З-2026-' + (8 + DB.applications.length), name: c.name, city: c.city, inn: c.inn, fleet: c.fleet, containers: c.containers, submitted: todayISO(), status: 'pending', docs: true };
+  const logText = 'Новая заявка на верификацию: ' + c.name + ' (' + c.city + ').';
+
+  if (ONLINE) {
+    /* Онлайн: сначала личный кабинет, затем карточка с владельцем — иначе база не свяжет карточку с аккаунтом.
+       Роль «Перевозчик» присваивает сама база при регистрации. */
+    toast('Создаём личный кабинет…', 'ok');
+    sbSignUp(email, pass)
+      .then(() => {
+        c.owner = AUTH.userId;
+        DB.carriers.push(c); DB.applications.unshift(app); DB.log.unshift({ at: todayISO(), text: logText });
+        ME = c.id; Store.set('ks_me', ME); save();
+        sbPushCarrier(c, 'insert');
+        sbPushApplication(app, 'insert');
+        sbJournal(logText);
+      })
+      .then(async () => { await sbLoadProfile(); await sbLoadAll(true); applyRole(); render(); })
+      .then(() => {
+        const mine = DB.carriers.find(x => x.owner === PROFILE.id);
+        toast('Готово: личный кабинет создан, заявка отправлена. Роль — <b>Перевозчик</b>, карточка ' +
+          (mine ? mine.id + ' «ожидает верификации»' : '«ожидает верификации»') + '.', 'ok');
+      })
+      .catch(err => {
+        const msg = String(err.message || err);
+        toast(/already|существ/i.test(msg)
+          ? 'Такой e-mail уже зарегистрирован. Нажмите «Вход» в шапке — кабинет уже ждёт вас.'
+          : 'Не удалось создать кабинет: ' + esc(msg), 'bad');
+        render();
+      });
     return;
   }
-  /* Онлайн: сначала создаём личный кабинет, затем заявку; роль «Перевозчик» присваивает база */
-  toast('Создаём личный кабинет…', 'ok');
-  sbSignUp(email, pass)
-    .then(() => { c.owner = AUTH.userId; sbPushCarrier(c, 'insert'); sbPushApplication(DB.applications[0], 'insert'); })
-    .then(async () => { await sbLoadProfile(); await sbLoadAll(true); applyRole(); render(); })
-    .then(() => toast('Готово: личный кабинет создан, заявка отправлена. Роль — <b>Перевозчик</b>, карточка «ожидает верификации».', 'ok'))
-    .catch(err => {
-      const msg = String(err.message || err);
-      toast(/already|существ/i.test(msg)
-        ? 'Такой e-mail уже зарегистрирован. Нажмите «Вход» в шапке — кабинет уже ждёт вас.'
-        : 'Не удалось создать кабинет: ' + esc(msg), 'bad');
-      render();
-    });
+
+  /* Локальный демо-режим без базы */
+  DB.carriers.push(c); DB.applications.unshift(app); DB.log.unshift({ at: todayISO(), text: logText });
+  ME = c.id; Store.set('ks_me', ME);
+  sbPushCarrier(c, 'insert'); sbPushApplication(app, 'insert'); sbJournal(logText);
+  save();
+  ROLE = 'carrier'; Store.set('ks_role', ROLE);
+  render();
+  toast('Заявка отправлена. Статус «Ожидает верификации», проверка — до 3 рабочих дней.', 'ok');
 }
+/* Выход из аккаунта и переход к форме заявки (для участника без карточки в реестре) */
 function logoutToRegister() { sbSignOut(); showTab('cabinet'); }
-window.logoutToRegister = logoutToRegister;
+
 function approveApp(id) {
   if (!needAdmin('верификация перевозчика')) return;
   const a = DB.applications.find(x => x.id === id); a.status = 'verified';

@@ -10,7 +10,7 @@ const REF = 'nciyhaghjqddkqzuimff';
    SUPABASE_MGMT_TOKEN — токен управления проектом (только для уборки тестового аккаунта),
    ADMIN_EMAIL / ADMIN_PASSWORD — аккаунт администратора платформы. */
 const MGMT = process.env.SUPABASE_MGMT_TOKEN || '';
-const ADMIN = { email: process.env.ADMIN_EMAIL || '', pass: process.env.ADMIN_PASSWORD || '' };
+const ADMIN = { email: process.env.ADMIN_EMAIL || '', password: process.env.ADMIN_PASSWORD || '' };
 const TEST = { email: 'test-perevozchik-' + Date.now() + '@example.com', pass: 'Kont2026!Test' };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const errs = [];
@@ -66,14 +66,16 @@ async function openSite() {
     if (!/Перевозчик: /.test(authBox())) throw new Error('бейдж: ' + authBox() + ' | тосты: ' + toasts().slice(0, 160));
     return authBox();
   });
-  const prof1 = await rest('profiles?select=id,email,role&email=eq.' + encodeURIComponent(TEST.email));
+  const cTok = await (await fetch(`${SB}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: TEST.email, password: TEST.pass }) })).json();
+  const cJwt = cTok.access_token;
+  const testUid = cJwt ? JSON.parse(Buffer.from(cJwt.split('.')[1], 'base64').toString('utf8')).sub : null;
+  const prof1 = await rest('profiles?select=id,email,role&id=eq.' + testUid, cJwt);   // участник видит свою роль
   await T('в базе появилась роль «перевозчик»', () => {
     const p = (prof1.data || [])[0];
     if (!p) throw new Error('нет записи в profiles');
     if (p.role !== 'carrier') throw new Error('роль: ' + p.role);
-    return 'profiles: ' + p.email + ' → ' + p.role + ' (присвоено триггером базы)';
+    return 'profiles: ' + p.email + ' → ' + p.role + ' (присвоено автоматически при регистрации)';
   });
-  const testUid = (prof1.data || [])[0] && prof1.data[0].id;
   const card = await rest('carriers?select=id,status,owner,name&name=eq.' + encodeURIComponent('ООО «Тест Ролей»'));
   await T('карточка перевозчика создана и привязана к аккаунту', () => {
     const c = (card.data || [])[0];
@@ -84,20 +86,23 @@ async function openSite() {
   });
   const carrierId = (card.data || [])[0] && card.data[0].id;
 
-  /* токен перевозчика */
-  const cTok = await (await fetch(`${SB}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: TEST.email, password: TEST.pass }) })).json();
-  const cJwt = cTok.access_token;
-  await T('вход перевозчика работает и роль подтверждается базой', () => (cJwt ? 'токен получен' : (() => { throw new Error('нет токена'); })()));
+  await T('вход перевозчика работает и роль подтверждается базой', () => (cJwt ? 'токен получен, роль «перевозчик» видна в базе' : (() => { throw new Error('нет токена'); })()));
 
   const selfVerify = await restWrite('carriers?id=eq.' + carrierId, 'PATCH', { status: 'verified' }, cJwt);
   await T('перевозчик не может верифицировать себя (база отклоняет)', () => {
-    if (selfVerify.status !== 401 && selfVerify.status !== 403) throw new Error('HTTP ' + selfVerify.status + ' — правило не сработало');
-    return 'HTTP ' + selfVerify.status;
+    const changed = Array.isArray(selfVerify.data) && selfVerify.data.length > 0;
+    if (changed || ![200, 204, 401, 403].includes(selfVerify.status)) throw new Error('HTTP ' + selfVerify.status + ', изменённых строк: ' + (Array.isArray(selfVerify.data) ? selfVerify.data.length : '?'));
+    return 'HTTP ' + selfVerify.status + ', изменённых строк: 0 — статус остался pending';
   });
   const selfAdmin = await restWrite('profiles?id=eq.' + testUid, 'PATCH', { role: 'admin' }, cJwt);
   await T('перевозчик не может назначить себя администратором', () => {
-    if (selfAdmin.status !== 401 && selfAdmin.status !== 403) throw new Error('HTTP ' + selfAdmin.status);
-    return 'HTTP ' + selfAdmin.status;
+    const changed = Array.isArray(selfAdmin.data) && selfAdmin.data.length > 0;
+    if (changed) throw new Error('роль изменилась — правило не работает!');
+    if (![400, 401, 403].includes(selfAdmin.status)) throw new Error('HTTP ' + selfAdmin.status);
+    const after = await rest('profiles?select=role&id=eq.' + testUid, cJwt);
+    const role = ((after.data || [])[0] || {}).role;
+    if (role !== 'carrier') throw new Error('роль в базе: ' + role);
+    return 'HTTP ' + selfAdmin.status + ' — роль осталась ' + role;
   });
   const appsAsCarrier = await rest('applications?select=id', cJwt);
   await T('заявки участников перевозчику не видны', () => {
@@ -106,7 +111,7 @@ async function openSite() {
   });
 
   /* ---------- 2. Администратор: назначение ролей ---------- */
-  const aTok = await (await fetch(`${SB}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(ADMIN) })).json();
+  const aTok = await (await fetch(`${SB}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: ADMIN.email, password: ADMIN.password }) })).json();
   const aJwt = aTok.access_token;
   await T('вход администратора выполнен', () => (aJwt ? 'токен администратора получен' : (() => { throw new Error('нет токена'); })()));
 
@@ -115,7 +120,7 @@ async function openSite() {
   const authBox2 = () => norm(d2.querySelector('#authBox').textContent).trim();
   w2.openLogin(); await sleep(400);
   d2.querySelector('#lg_email').value = ADMIN.email;
-  d2.querySelector('#lg_pass').value = ADMIN.pass;
+  d2.querySelector('#lg_pass').value = ADMIN.password;
   w2.doLogin(); await sleep(6000);
   await T('администратор вошёл: роль определена автоматически', () => {
     if (!/Администратор: /.test(authBox2())) throw new Error(authBox2());
@@ -139,7 +144,7 @@ async function openSite() {
   await T('администратор назначает перевозчика членом Совета', async () => {
     w2.setUserRole(testUid, 'council', TEST.email);
     await sleep(2500);
-    const p = await rest('profiles?select=role&id=eq.' + testUid);
+    const p = await rest('profiles?select=role&id=eq.' + testUid, aJwt);
     const role = (p.data || [])[0] && p.data[0].role;
     if (role !== 'council') throw new Error('роль: ' + role);
     return 'profiles.role → council';
@@ -147,7 +152,7 @@ async function openSite() {
   await T('администратор назначает второго администратора', async () => {
     w2.setUserRole(testUid, 'admin', TEST.email);
     await sleep(2500);
-    const p = await rest('profiles?select=role&id=eq.' + testUid);
+    const p = await rest('profiles?select=role&id=eq.' + testUid, aJwt);
     const role = (p.data || [])[0] && p.data[0].role;
     if (role !== 'admin') throw new Error('роль: ' + role);
     return 'profiles.role → admin (назначить может только администратор)';
@@ -160,16 +165,22 @@ async function openSite() {
     return 'видит заявки (права администратора), строк: ' + (apps.data || []).length;
   });
   await T('владелец платформы по-прежнему главный (защита от понижения)', async () => {
-    const me = await rest('profiles?select=id,is_primary&email=eq.' + encodeURIComponent(ADMIN.email));
+    const me = await rest('profiles?select=id,is_primary,role&email=eq.' + encodeURIComponent(ADMIN.email), aJwt);
     const row = (me.data || [])[0];
+    if (!row) throw new Error('не нашёл профиль администратора');
+    if (!row.is_primary) throw new Error('у владельца не стоит признак главного администратора');
     const patch = await restWrite('profiles?id=eq.' + row.id, 'PATCH', { role: 'carrier' }, aJwt);
-    if (patch.status !== 403) throw new Error('HTTP ' + patch.status + ' — база позволила понизить владельца!');
-    return 'HTTP 403 — понизить главного администратора нельзя даже администратору';
+    const changed = Array.isArray(patch.data) && patch.data.length > 0;
+    if (changed) throw new Error('база позволила понизить владельца!');
+    const check = await rest('profiles?select=role&id=eq.' + row.id, aJwt);
+    const role = ((check.data || [])[0] || {}).role;
+    if (role !== 'admin') throw new Error('роль владельца стала: ' + role);
+    return 'HTTP ' + patch.status + ' — владелец остался администратором (защита базы)';
   });
   await T('снятие доступа: роль отозвана', async () => {
     const del = await fetch(`${SB}/rest/v1/profiles?id=eq.${testUid}`, { method: 'DELETE', headers: H(aJwt) });
     if (del.status !== 204 && del.status !== 200) throw new Error('HTTP ' + del.status);
-    const p = await rest('profiles?select=role&id=eq.' + testUid);
+    const p = await rest('profiles?select=role&id=eq.' + testUid, aJwt);
     if ((p.data || []).length) throw new Error('запись осталась');
     return 'запись роли удалена — у участника больше нет прав';
   });
@@ -183,7 +194,7 @@ async function openSite() {
     const del = await fetch(`https://api.supabase.com/v1/projects/${REF}/auth/admin/users/${testUid}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + MGMT } });
     console.log('  аккаунт удалён из Supabase Auth:', del.status === 200 || del.status === 204 ? 'да' : 'HTTP ' + del.status);
   }
-  const left = await rest('profiles?select=email,role,is_primary');
+  const left = await rest('profiles?select=email,role,is_primary', aJwt);
   console.log('  роли в базе после уборки:', JSON.stringify(left.data));
   console.log('\nОшибки JS:', errs.filter(e => /JSDOM/.test(e)).length);
   process.exit(errs.length ? 1 : 0);
