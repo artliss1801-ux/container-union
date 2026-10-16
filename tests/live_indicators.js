@@ -142,6 +142,19 @@ const num = x => String(x).replace('.', ',');
     if (!/Администрацией/.test(hit.result)) throw new Error('результат: ' + hit.result);
     return hit.id + ' · ' + hit.title + ' · ' + hit.result;
   });
+  await T('открытое значение ДТ переносится в проект решения (сетка не меняется)', async () => {
+    if (!origInd || !origInd.dt) return 'открытых данных ДТ пока нет — проверка пропущена';
+    w.showTab('cabinet');
+    const before = (await (await fetch(`${SB}/rest/v1/tariff?select=val&id=eq.1`, { headers: H() })).json())[0].val.fuelPrice;
+    w.projectFromOpenData('fuelPrice');
+    await sleep(2500);
+    const votes = await (await fetch(`${SB}/rest/v1/votes?select=id,title,payload,status&order=created.desc&limit=3`, { headers: H(aJwt) })).json();
+    const hit = (votes || []).find(v => v.payload && Math.abs(Number(v.payload.fuelPrice) - Number(origInd.dt)) < 0.001);
+    if (!hit) throw new Error('проекта нет: ' + JSON.stringify(votes).slice(0, 160));
+    const after = (await (await fetch(`${SB}/rest/v1/tariff?select=val&id=eq.1`, { headers: H() })).json())[0].val.fuelPrice;
+    if (Number(after) !== Number(before)) throw new Error('сетка изменилась без решения: ' + before + ' → ' + after);
+    return hit.id + ' · ' + hit.title + ' · статус ' + hit.status + ' · сетка не тронута (' + after + ' ₽/л)';
+  });
   await T('Администрация обновляет курсы — они появляются в строке', async () => {
     w.showTab('cabinet');
     d.querySelector('#ind_usd').value = '84,10';
@@ -174,7 +187,9 @@ const num = x => String(x).replace('.', ',');
   } else {
     const del = async (t, q) => fetch(`${SB}/rest/v1/${t}?${q}`, { method: 'DELETE', headers: { ...H(aJwt), Prefer: 'return=minimal' } });
     await del('decisions', 'title=' + encodeURIComponent('ilike.*ориентир*'));
+    await del('decisions', 'title=' + encodeURIComponent('ilike.*дизельн*'));
     await del('votes', 'title=' + encodeURIComponent('ilike.*ориентир*'));
+    await del('votes', 'title=' + encodeURIComponent('ilike.*дизельн*'));
     await del('journal', 'or=' + encodeURIComponent('(text.ilike.*ориентир*,text.ilike.*Курсы обновлены*)'));
     console.log('  (Management API-токена нет — уборка выполнена под правами администратора)');
   }
