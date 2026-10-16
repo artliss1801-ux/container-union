@@ -23,12 +23,14 @@
   После настройки токен можно отозвать на той же странице.
 """
 
+import datetime
 import json
 import os
 import secrets
 import string
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 REF = "nciyhaghjqddkqzuimff"                     # проект Supabase
@@ -48,6 +50,7 @@ problems = []
 
 def call(url, method="GET", body=None, headers=None, expect_error=False):
     """Запрос к API. Возвращает (код, разобранный_ответ)."""
+    url = urllib.parse.quote(url, safe=":/?#[]@!$&'()*+,;=%~")   # не-ASCII → %-коды
     data = json.dumps(body, ensure_ascii=False).encode("utf-8") if body is not None else None
     req = urllib.request.Request(url, data=data, method=method)
     for k, v in (headers or {}).items():
@@ -163,6 +166,8 @@ def main():
             print(f"      {OK} пароль обновлён (id {uid[:8]}…)")
         else:
             sys.exit(f"Не удалось создать аккаунт: {msg}")
+    print(f"      ПАРОЛЬ АДМИНИСТРАТОРА: {PASSWORD}")
+    print("      ↑ сохраните его; при повторном запуске с ADMIN_PASSWORD='...' он будет заменён")
 
     # ---- 4. Права куратора ----
     step(4, "Выдаю права куратора")
@@ -179,7 +184,15 @@ def main():
         problems.append("curators")
 
     # ---- 5. Проверка ----
+    #   Посторонний пытается ИЗМЕНИТЬ существующие строки, подставляя те же значения.
+    #   Признак защиты: база отвечает пустым набором (0 строк изменено). Признак дыры:
+    #   в ответе приходит изменённая строка.
     step(5, "Проверяю результат")
+
+    def try_read(url, headers):
+        code, data = call(url, headers=headers, expect_error=True)
+        return code, data
+
     code, sett = call(f"{PROJ}/auth/v1/settings", headers={"apikey": ANON})
     if isinstance(sett, dict) and sett.get("disable_signup") is True:
         print(f"      {OK} свободная регистрация закрыта (подтверждено настройками проекта)")
@@ -187,6 +200,7 @@ def main():
         print(f"      {FAIL} регистрация всё ещё открыта: {str(sett)[:120]}")
         problems.append("проверка регистрации")
 
+    jwt = None
     code, tok = call(f"{PROJ}/auth/v1/token?grant_type=password", "POST",
                      {"email": EMAIL, "password": PASSWORD}, {"apikey": ANON, "Content-Type": "application/json"},
                      expect_error=True)
@@ -204,20 +218,44 @@ def main():
         print(f"      {FAIL} вход не сработал: {str(tok)[:200]}")
         problems.append("вход")
 
-    # посторонний не может писать (id=999 — несуществующая строка, порча данных исключена)
-    code, _ = call(f"{PROJ}/rest/v1/tariff?id=eq.999", "PATCH", {"val": {}}, anon_headers(), expect_error=True)
-    if code in (401, 403):
-        print(f"      {OK} посторонний не может менять тариф (ответ {code})")
-    else:
-        print(f"      {FAIL} база ответила {code} — правила не защищают тариф")
-        problems.append("RLS: тариф")
+    # получаем текущие значения, чтобы «проба» не меняла данные
+    _, tv = call(f"{PROJ}/rest/v1/tariff?select=val&id=eq.1", headers=anon_headers())
+    tariff_val = tv[0]["val"] if isinstance(tv, list) and tv else {}
+    _, sv = call(f"{PROJ}/rest/v1/settings?select=val&key=eq.council", headers=anon_headers())
+    settings_val = sv[0]["val"] if isinstance(sv, list) and sv else {}
 
-    code, _ = call(f"{PROJ}/rest/v1/carriers?id=eq.999", "PATCH", {"status": "verified"}, anon_headers(), expect_error=True)
-    if code in (401, 403):
-        print(f"      {OK} посторонний не может менять статусы перевозчиков (ответ {code})")
+    def tamper_check(title, table, query, payload, name):
+        h = dict(anon_headers())
+        h["Prefer"] = "return=representation"
+        code, data = call(f"{PROJ}/rest/v1/{table}?{query}", "PATCH", payload, h, expect_error=True)
+        changed = isinstance(data, list) and len(data) > 0
+        if code in (401, 403):
+            print(f"      {OK} {title}: отказ {code}")
+        elif changed:
+            print(f"      {FAIL} {title}: изменение ПРОШЛО (в ответе строка)")
+            problems.append(name)
+        else:
+            print(f"      {OK} {title}: база не дала изменить ни одной строки")
+
+    tamper_check("посторонний не может менять тарифную сетку", "tariff", "id=eq.1", {"val": tariff_val}, "RLS: тариф")
+    tamper_check("посторонний не может менять настройки Совета", "settings", "key=eq.council", {"val": settings_val}, "RLS: настройки")
+
+    code, _ = call(f"{PROJ}/rest/v1/tariff?select=id", headers=anon_headers(), expect_error=True)
+    _, tv2 = call(f"{PROJ}/rest/v1/tariff?select=val&id=eq.1", headers=anon_headers())
+    if isinstance(tv2, list) and tv2 and tv2[0]["val"] == tariff_val:
+        print(f"      {OK} тарифная сетка не изменилась (контрольная сверка)")
     else:
-        print(f"      {FAIL} база ответила {code} — правила не защищают статусы")
-        problems.append("RLS: перевозчики")
+        print(f"      {FAIL} тарифная сетка изменилась!")
+        problems.append("сверка тарифа")
+
+    # удаление посторонним
+    h = dict(anon_headers()); h["Prefer"] = "return=representation"
+    code, data = call(f"{PROJ}/rest/v1/journal?text=eq.нет-такой-записи", "DELETE", None, h, expect_error=True)
+    if code in (401, 403) or (isinstance(data, list) and not data):
+        print(f"      {OK} посторонний не может удалять записи")
+    else:
+        print(f"      {FAIL} удаление прошло: {str(data)[:120]}")
+        problems.append("RLS: удаление")
 
     code, apps = call(f"{PROJ}/rest/v1/applications?select=id", headers=anon_headers(), expect_error=True)
     if code in (401, 403) or (isinstance(apps, list) and apps == []):
@@ -226,13 +264,39 @@ def main():
         print(f"      {FAIL} заявки видны посторонним: {str(apps)[:120]}")
         problems.append("RLS: заявки")
 
-    code, _ = call(f"{PROJ}/rest/v1/journal", "POST", [{"id": 9999, "kind": "проверка", "text": "публичная запись из теста"}],
+    # публичные действия участника — должны работать
+    probe = "Проверка настройки " + secrets.token_hex(4)
+    code, _ = call(f"{PROJ}/rest/v1/journal", "POST",
+                   [{"at": datetime.date.today().isoformat(), "text": probe}], anon_headers(), expect_error=True)
+    if code in (200, 201, 204):
+        print(f"      {OK} публичные записи (журнал) работают")
+    else:
+        print(f"      {FAIL} публичная запись не проходит (ответ {code})")
+        problems.append("публичная запись")
+
+    code, _ = call(f"{PROJ}/rest/v1/carriers", "POST",
+                   [{"id": "PR-" + secrets.token_hex(3), "name": probe, "status": "pending", "demo": False}],
                    anon_headers(), expect_error=True)
     if code in (200, 201, 204):
-        print(f"      {OK} публичная запись (журнал) по-прежнему разрешена")
+        print(f"      {OK} регистрация перевозчика без входа работает")
     else:
-        print(f"      {FAIL} публичная запись сломалась (ответ {code})")
-        problems.append("публичная запись")
+        print(f"      {FAIL} регистрация перевозчика не проходит (ответ {code})")
+        problems.append("регистрация перевозчика")
+
+    code, _ = call(f"{PROJ}/rest/v1/carriers", "POST",
+                   [{"id": "PR-bad", "name": probe, "status": "verified", "demo": False}],
+                   anon_headers(), expect_error=True)
+    if code in (401, 403):
+        print(f"      {OK} посторонний не может зарегистрироваться сразу «верифицированным»")
+    else:
+        print(f"      {FAIL} база приняла статус verified от постороннего (ответ {code})")
+        problems.append("RLS: самоверификация")
+
+    # уборка тестовых строк (только через управляющий доступ)
+    mgmt(f"{API}/database/query", "POST", {"query":
+        "delete from journal where text like 'Проверка настройки%'; "
+        "delete from carriers where id like 'PR-%';"})
+    print("      · тестовые строки удалены")
 
     # ---- Итог ----
     print("\n" + "=" * 62)
