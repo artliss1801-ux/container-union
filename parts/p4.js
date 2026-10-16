@@ -767,7 +767,7 @@ function adminPanel() {
       <div class="sub">Действия Администрации защищены: их выполняет только куратор платформы. Вход — по e-mail и паролю, созданным в Supabase (Authentication → Users).</div>
       <div class="row" style="margin-top:12px"><button class="btn pri" onclick="openLogin()">Войти как куратор</button>
       <span class="mini">Регистрация, размещение заявок и подача ставок работают без входа.</span></div>
-      <div class="note" style="margin-top:12px">Кто может менять данные, определяет таблица <b>curators</b> в базе (порядок — в файле <b>supabase/security.sql</b>). Публикуемый ключ базы без записи в curators прав на изменение не даёт.</div>
+      <div class="note" style="margin-top:12px">Кто может менять данные, определяет таблица ролей <b>profiles</b> в базе (порядок — в файле <b>supabase/roles.sql</b>). Роль присваивается базой: перевозчику — при регистрации, члену Совета и администратору — назначением. Публикуемый ключ базы сам по себе прав на управление не даёт.</div>
     </div>`;
   const apps = DB.applications.filter(a => a.status === 'pending');
   const pend = DB.carriers.filter(c => c.status === 'pending');
