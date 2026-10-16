@@ -52,7 +52,7 @@ cp "$SRC"/tests/*.js "$SRC"/tests/*.txt tests/
 # устаревшие копии тестов в корне (их место — папка tests/)
 rm -f README.txt test_master.js test_design.js test_strict.js mock_strict.js \
       live_public.js live_roles.js live_indicators.js live_design.js live_admin_write.js
-echo "  файлов всего: $(git ls-files --others --exclude-standard $(git ls-files) 2>/dev/null | wc -l)"
+echo "  файлов в репозитории: $(git ls-files | wc -l)"
 
 echo "▸ Шаг 5. Коммит и публикация"
 git add -A
