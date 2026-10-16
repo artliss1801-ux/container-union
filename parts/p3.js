@@ -849,7 +849,6 @@ window.copyLink = copyLink;
     const y = window.pageYOffset || h.scrollTop || 0;
     if (pb) pb.style.width = (max > 0 ? Math.min(100, y / max * 100) : 0) + '%';
     if (tt && tt.classList) tt.classList.toggle('show', y > 520);
-    if (document.body && document.body.classList) document.body.classList.toggle('scrolled', y > 60);
   };
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', onScroll);

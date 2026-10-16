@@ -48,9 +48,11 @@ const T = (n, f) => Promise.resolve().then(f).then(r => console.log('✓', n, r 
     if (!m) throw new Error('нет расчёта');
     return d.querySelector('#c_km').value + ' км → ' + m[1].trim() + ' ₽';
   });
-  await T('в шапке компактный режим при прокрутке', () => {
-    if (!page.includes('body.scrolled .top-in{padding:6px 16px}')) throw new Error('нет компактной шапки');
-    return 'шапка ужимается, содержимое получило больше места';
+  await T('шапка стабильна при прокрутке, лишнего текста нет', () => {
+    if (/scrolled/.test(page)) throw new Error('остались переключения шапки на прокрутке — тряска');
+    if (d.querySelector('.logo-title')) throw new Error('текст рядом с логотипом остался');
+    if (/Открытая платформа/.test(norm(d.querySelector('.top-in').textContent))) throw new Error('описание в шапке');
+    return 'высота шапки не меняется, рядом с логотипом пусто';
   });
   console.log('\nОшибки JS:', errs.length);
   process.exit(errs.length ? 1 : 0);

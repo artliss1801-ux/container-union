@@ -134,10 +134,30 @@ const T = (n, f) => Promise.resolve().then(f).then(r => console.log('✓', n, r 
     if (a !== 'calc' || b !== 'about') throw new Error(a + '/' + b);
     return 'вправо → ' + a + ', влево → ' + b;
   });
-  await T('лента событий и компактная шапка при прокрутке', () => {
+  await T('шапка не меняет высоту при прокрутке (нет тряски)', () => {
+    if (/scrolled/.test(html)) throw new Error('остались правила, менявшие шапку при прокрутке');
+    if (/body\.scrolled|classList\.toggle\('scrolled'/.test(html)) throw new Error('класс scrolled ещё ставится');
+    const topIn = d.querySelector('.top-in');
+    const h0 = topIn.getBoundingClientRect ? JSON.stringify(topIn.getBoundingClientRect()) : 'нет макета';
+    d.dispatchEvent(new w.Event('scroll'));
+    const after = topIn.getBoundingClientRect ? JSON.stringify(topIn.getBoundingClientRect()) : h0;
+    if (h0 !== after) throw new Error('размеры шапки изменились при прокрутке');
+    const st = w.getComputedStyle(topIn);
+    return 'высота шапки постоянна (padding ' + st.paddingTop + '), порог прокрутки ничего не переключает';
+  });
+  await T('рядом с логотипом нет текста', () => {
+    if (d.querySelector('.logo-title')) throw new Error('блок с названием остался');
+    const top = norm(d.querySelector('.top-in').textContent).replace(/\s+/g, ' ').trim();
+    if (/Открытая платформа/.test(top)) throw new Error('описание осталось в шапке: ' + top);
+    const logoScreenReader = norm(d.querySelector('#ksLogo').textContent);
+    if (!/Контейнерный Союз/.test(logoScreenReader)) throw new Error('логотип не читается программами для слепых');
+    return 'в шапке только кнопка меню и логотип; название читается с экрана как «Контейнерный Союз»';
+  });
+  await T('лента событий работает как прежде', () => {
     if (d.querySelectorAll('#tickerIn span').length < 10) throw new Error('лента пуста');
-    if (!/body\.scrolled \.top-in\{padding:6px 16px\}/.test(html)) throw new Error('нет компактного режима шапки');
-    return 'лента: ' + d.querySelectorAll('#tickerIn span').length + ' сообщений; шапка ужимается при прокрутке';
+    const t2 = norm(d.querySelector('#tickerIn').textContent);
+    if (!/Тарифная сетка/.test(t2)) throw new Error('нет данных');
+    return 'лента: ' + d.querySelectorAll('#tickerIn span').length + ' сообщений';
   });
   console.log('\nПровалов:', errs.length);
   process.exit(errs.length ? 1 : 0);
