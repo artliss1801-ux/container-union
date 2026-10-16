@@ -1,17 +1,19 @@
-# Ночной сбор показателей строки под шапкой: ДТ, «Платон», курсы ЦБ РФ.
+# Ночной сбор показателей строки под шапкой «Контейнерного Союза».
 #
-# Как поставить (один раз, 1 минута, без вложений):
-#   1) GitHub → репозиторий container-union → Add file → Create new file
-#   2) Имя файла: .github/workflows/nightly-indicators.yml
-#   3) Вставьте весь текст ниже → Commit changes
-#   4) Settings → Secrets and variables → Actions → New repository secret:
-#        SUPABASE_URL          = https://nciyhaghjqddkqzuimff.supabase.co
-#        SUPABASE_SERVICE_KEY  = служебный ключ проекта (Settings → API → service_role)
-#   5) Actions → «Ночной сбор показателей» → Run workflow (проверка вручную)
+# Что делает: запускает tools/fetch_indicators.mjs — скрипт читает открытые источники
+#   • курсы валют — ЦБ РФ (зеркало cbr-xml-daily.ru, официальные курсы);
+#   • дизельное топливо — недельная средняя по РФ из открытой сводки Росстата;
+#   • «Платон» — тариф системы из открытых публикаций,
+# и записывает значения в таблицу settings (ключ indicators).
 #
-# Что делает: node tools/fetch_indicators.mjs — читает открытые источники и записывает
-# значения в таблицу settings (ключ indicators). Если источник не ответил, прежнее
-# значение сохраняется. Ручной ввод показателей на платформе не нужен.
+# Важно: тарифную сетку задача НЕ меняет. Значения появляются в кабинете администратора
+# в блоке «Открытые данные», откуда Администрация (после выборов — Совет) переносит их
+# в проект решения. Если источник не ответил или значение не проходит проверку диапазона —
+# прежнее значение сохраняется.
+#
+# Доступ к базе: вход администратора платформы. Пароль хранится только в секретах GitHub
+# (Settings → Secrets and variables → Actions → ADMIN_PASSWORD) и в файлы не попадает.
+# Если появится секрет SUPABASE_SERVICE_KEY — скрипт предпочтёт служебный ключ.
 name: Ночной сбор показателей
 
 on:
@@ -22,9 +24,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: indicators
+  cancel-in-progress: false
+
 jobs:
   indicators:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Забрать исходники
         uses: actions/checkout@v4
@@ -36,10 +43,12 @@ jobs:
 
       - name: Собрать показатели из открытых источников
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_URL: https://nciyhaghjqddkqzuimff.supabase.co
+          ADMIN_EMAIL: artliss@rambler.ru
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: node tools/fetch_indicators.mjs
 
-      - name: Отчёт в журнал задачи
+      - name: Итог
         if: always()
-        run: echo "Готово: значения в таблице settings, ключ indicators."
+        run: echo "Показатели собраны и записаны в таблицу settings (ключ indicators)."

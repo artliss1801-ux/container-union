@@ -18,9 +18,13 @@
    ============================================================ */
 'use strict';
 
-const SB_URL = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
-const SB_KEY = process.env.SUPABASE_SERVICE_KEY || '';
-const DRY = process.argv.includes('--dry') || !SB_KEY;
+const SB_URL = (process.env.SUPABASE_URL || 'https://nciyhaghjqddkqzuimff.supabase.co').replace(/\/$/, '');  // адрес проекта (публичный)
+const SB_KEY = process.env.SUPABASE_SERVICE_KEY || '';            // служебный ключ (если задан — используется он)
+const SB_ANON = process.env.SUPABASE_ANON_KEY || 'sb_publishable_vL0U2ble-aE4F5juUPNXpQ_raUy-eaR'; // публичный ключ платформы
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || '';                 // иначе — вход администратора платформы
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+const DRY = process.argv.includes('--dry') || (!SB_KEY && !(ADMIN_EMAIL && ADMIN_PASSWORD));
+let TOKEN = '';                                                   // доступ к базе: служебный ключ или токен администратора
 
 /* ---------- утилиты ---------- */
 const log = (...a) => console.log(new Date().toISOString().slice(0, 16).replace('T', ' '), '·', ...a);
@@ -188,19 +192,31 @@ async function platonRate() {
   return null;
 }
 
-/* ---------- запись в базу ---------- */
-async function readIndicators() {
-  const r = await fetch(`${SB_URL}/rest/v1/settings?select=val&key=eq.indicators`, {
-    headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY }
+/* ---------- доступ к базе и запись ---------- */
+/* Если служебного ключа нет — входим как администратор платформы и пишем его токеном:
+   права проверяет сама база (политика admin_all для is_admin()). Пароль в лог не попадает. */
+async function authToken() {
+  if (SB_KEY) return SB_KEY;
+  const r = await fetch(`${SB_URL}/auth/v1/token?grant_type=password`, {
+    method: 'POST', headers: { apikey: SB_ANON, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD })
   });
-  if (!r.ok) throw new Error('чтение настроек: HTTP ' + r.status);
+  if (!r.ok) throw new Error('вход администратора не удался: HTTP ' + r.status + ' ' + (await r.text()).slice(0, 140));
+  const d = await r.json();
+  if (!d.access_token) throw new Error('вход администратора: база не вернула токен');
+  return d.access_token;
+}
+const HEAD = (extra) => Object.assign({ apikey: SB_KEY || SB_ANON, Authorization: 'Bearer ' + (TOKEN || SB_KEY) }, extra || {});
+async function readIndicators() {
+  const r = await fetch(`${SB_URL}/rest/v1/settings?select=val&key=eq.indicators`, { headers: HEAD() });
+  if (!r.ok) throw new Error('чтение настроек: HTTP ' + r.status + ' — ' + (await r.text()).slice(0, 140));
   const rows = await r.json();
   return (rows[0] && rows[0].val) || {};
 }
 async function writeIndicators(val) {
   const r = await fetch(`${SB_URL}/rest/v1/settings?on_conflict=key`, {
     method: 'POST',
-    headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+    headers: HEAD({ 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' }),
     body: JSON.stringify([{ key: 'indicators', val }])
   });
   if (!r.ok) throw new Error('запись настроек: HTTP ' + r.status + ' ' + (await r.text()).slice(0, 160));
@@ -224,6 +240,8 @@ async function writeIndicators(val) {
 
   if (DRY) { log('Готово (без записи).'); return; }
 
+  TOKEN = await authToken();
+  log('Доступ к базе:', SB_KEY ? 'служебный ключ' : 'вход администратора платформы');
   const prev = await readIndicators();
   const next = Object.assign({}, prev, { fetchedAt: new Date().toISOString(), auto: true });
   if (rates) Object.assign(next, { usd: rates.usd, eur: rates.eur, cny: rates.cny, asOf: rates.asOf, src: rates.src });
