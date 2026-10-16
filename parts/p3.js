@@ -481,6 +481,7 @@ function placeBid(id) {
   const l = DB.loads.find(x => x.id === id);
   const rate = num($('#b_rate').value);
   if (!$('#b_terms').checked) { toast('Необходимо подтвердить условия заявки', 'bad'); return; }
+  if (ROLE === 'admin' && !needCurator('назначение рейса')) return;
   const cid = ROLE === 'admin' ? $('#b_carrier').value : (ME || 'C-101');
   const c = DB.carriers.find(x => x.id === cid);
   if (l.floor && rate < l.floor) { toast('Ставка ниже минимальной ставки Совета (' + money(l.floor) + '). Заявка помечена как <b>демпинговая</b> и направлена в арбитраж.', 'bad'); }
@@ -524,7 +525,7 @@ function loadCreate() {
   };
   DB.loads.unshift(l);
   DB.log.unshift({ at: todayISO(), text: 'Размещена заявка ' + l.id + ': ' + l.from + ' → ' + l.to + ' (' + l.type + ').' });
-  sbPushLoad(l); sbJournal('Размещена заявка ' + l.id + ': ' + l.from + ' → ' + l.to + ' (' + l.type + ').');
+  sbPushLoad(l, 'insert'); sbJournal('Размещена заявка ' + l.id + ': ' + l.from + ' → ' + l.to + ' (' + l.type + ').');
   save(); closeModal(); render(); toast('Заявка ' + l.id + ' опубликована на бирже', 'ok');
 }
 [loadCard, placeBid, loadForm, loadCreate].forEach(f => window[f.name] = f);

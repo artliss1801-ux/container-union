@@ -5,9 +5,12 @@
 | | |
 |---|---|
 | Сайт (живой) | **https://artliss1801-ux.github.io/container-union/** |
+| Короткая ссылка | **https://tinyurl.com/cont-union** (резерв: https://clck.ru/3WXESa) |
 | Репозиторий | https://github.com/artliss1801-ux/container-union |
 | База данных | Supabase (бесплатный тариф), проект `nciyhaghjqddkqzuimff` — подключён через `config.js` |
 | Документы | `Документы_Контейнерный_Союз.md` — Устав, Правила, Положение о Совете, регламенты, типовой договор |
+| Защита данных | вход куратора (Supabase Auth) + строгие правила доступа: `supabase/security.sql` |
+| Домен | cont-union.ru и cont-union.com свободны; план подключения — `Домен.md` |
 
 Правки: файлы на GitHub редактируются прямо в браузере (карандаш → Commit changes) — изменения на сайте появятся через 1–2 минуты.
 

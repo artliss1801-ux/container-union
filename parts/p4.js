@@ -244,6 +244,7 @@ function transitionVoteCard(v, isExample) {
   </div>`;
 }
 function approveTransition(id) {
+  if (!needCurator('утверждение тарифного решения')) return;
   const v = DB.votes.find(x => x.id === id);
   if (!v || v.status !== 'voting') return;
   v.status = 'passed';
@@ -255,6 +256,7 @@ function approveTransition(id) {
   toast('Решение ' + v.id + ' утверждено в переходный период. Тарифная сетка обновлена, запись добавлена в реестр решений.', 'ok');
 }
 function scheduleElections() {
+  if (!needCurator('назначение выборов Совета')) return;
   const pr = electionProgress();
   if (!pr.ready) { toast('Выборы назначаются при ' + pr.need + ' реальных верифицированных перевозчиках. Сейчас: ' + pr.n + '.', 'bad'); return; }
   DB.settings.elections = { announced: todayISO(), candidatesDeadline: addDays(todayISO(), 20), voteDeadline: addDays(todayISO(), 35) };
@@ -264,6 +266,7 @@ function scheduleElections() {
   toast('Выборы назначены. Выдвижение кандидатов — 20 дней, голосование участников — 15 дней.', 'ok');
 }
 function publishCouncil() {
+  if (!needCurator('публикация состава Совета')) return;
   const cands = realVerified().slice(0, 9);
   if (cands.length < 9) { toast('Для публикации состава нужно минимум 9 кандидатов. Сейчас: ' + cands.length + '.', 'bad'); return; }
   DB.members = cands.map((c, i) => ({
@@ -278,6 +281,7 @@ function publishCouncil() {
   toast('Состав Совета опубликован. Переходный период завершён — решения принимаются голосованием.', 'ok');
 }
 function toggleDemoCouncil() {
+  if (!needCurator('переключение учебного режима')) return;
   DB.settings.demoCouncil = !DB.settings.demoCouncil;
   if (DB.settings.demoCouncil && ROLE !== 'council' && ROLE !== 'admin') { ROLE = 'council'; Store.set('ks_role', ROLE); $('#roleSel').value = 'council'; }
   sbPushSettings();
@@ -718,6 +722,14 @@ function viewCabinet() {
   </div>`;
 }
 function adminPanel() {
+  if (ONLINE && !AUTH.token) return `
+    <div class="card" style="margin-top:16px">
+      <h2>Администрирование: нужен вход</h2>
+      <div class="sub">Действия Администрации защищены: их выполняет только куратор платформы. Вход — по e-mail и паролю, созданным в Supabase (Authentication → Users).</div>
+      <div class="row" style="margin-top:12px"><button class="btn pri" onclick="openLogin()">Войти как куратор</button>
+      <span class="mini">Регистрация, размещение заявок и подача ставок работают без входа.</span></div>
+      <div class="note" style="margin-top:12px">Кто может менять данные, определяет таблица <b>curators</b> в базе (порядок — в файле <b>supabase/security.sql</b>). Публикуемый ключ базы без записи в curators прав на изменение не даёт.</div>
+    </div>`;
   const apps = DB.applications.filter(a => a.status === 'pending');
   const pend = DB.carriers.filter(c => c.status === 'pending');
   return `<div class="card" style="margin-top:16px">
@@ -751,12 +763,13 @@ function register() {
   DB.carriers.push(c); ME = c.id; Store.set('ks_me', ME);
   DB.applications.unshift({ id: 'З-2026-' + (8 + DB.applications.length), name: c.name, city: c.city, inn: c.inn, fleet: c.fleet, containers: c.containers, submitted: todayISO(), status: 'pending', docs: true });
   DB.log.unshift({ at: todayISO(), text: 'Новая заявка на верификацию: ' + c.name + ' (' + c.city + ').' });
-  sbPushCarrier(c); sbPushApplication(DB.applications[0]); sbJournal('Новая заявка на верификацию: ' + c.name + ' (' + c.city + ').');
+  sbPushCarrier(c, 'insert'); sbPushApplication(DB.applications[0], 'insert'); sbJournal('Новая заявка на верификацию: ' + c.name + ' (' + c.city + ').');
   save();
   toast('Заявка отправлена. Статус «Ожидает верификации», проверка — до 3 рабочих дней. Включён демо-режим перевозчика.', 'ok');
   ROLE = 'carrier'; Store.set('ks_role', ROLE); $('#roleSel').value = 'carrier'; render();
 }
 function approveApp(id) {
+  if (!needCurator('верификация перевозчика')) return;
   const a = DB.applications.find(x => x.id === id); a.status = 'verified';
   const c = DB.carriers.find(x => x.inn === a.inn || x.name === a.name);
   if (c) { c.status = 'verified'; c.metrics.transparency = Math.min(100, c.metrics.transparency + 25); c.docs.osgop = true; }
@@ -764,9 +777,9 @@ function approveApp(id) {
   DB.log.unshift({ at: todayISO(), text: 'Верифицирован участник: ' + a.name + '.' });
   save(); render(); toast(a.name + ' верифицирован(а) и добавлен(а) в реестр', 'ok');
 }
-function rejectApp(id) { const a = DB.applications.find(x => x.id === id); a.status = 'rejected'; sbPushApplication(a); save(); render(); toast('Заявка отклонена, заявителю направлены замечания'); }
-function verifyCarrier(id) { const c = DB.carriers.find(x => x.id === id); c.status = 'verified'; c.metrics.transparency = Math.min(100, c.metrics.transparency + 30); sbPushCarrier(c); DB.log.unshift({ at: todayISO(), text: 'Верифицирован перевозчик ' + c.name + '.' }); save(); render(); toast(c.name + ' — статус «Верифицирован»', 'ok'); }
-function suspendCarrier(id) { const c = DB.carriers.find(x => x.id === id); c.status = 'suspended'; sbPushCarrier(c); DB.log.unshift({ at: todayISO(), text: 'Приостановлен статус перевозчика ' + c.name + ' до устранения замечаний.' }); save(); render(); toast(c.name + ': доступ ограничен до устранения замечаний', 'bad'); }
+function rejectApp(id) { if (!needCurator('отклонение заявки')) return; const a = DB.applications.find(x => x.id === id); a.status = 'rejected'; sbPushApplication(a); save(); render(); toast('Заявка отклонена, заявителю направлены замечания'); }
+function verifyCarrier(id) { if (!needCurator('верификация перевозчика')) return; const c = DB.carriers.find(x => x.id === id); c.status = 'verified'; c.metrics.transparency = Math.min(100, c.metrics.transparency + 30); sbPushCarrier(c); DB.log.unshift({ at: todayISO(), text: 'Верифицирован перевозчик ' + c.name + '.' }); save(); render(); toast(c.name + ' — статус «Верифицирован»', 'ok'); }
+function suspendCarrier(id) { if (!needCurator('приостановка перевозчика')) return; const c = DB.carriers.find(x => x.id === id); c.status = 'suspended'; sbPushCarrier(c); DB.log.unshift({ at: todayISO(), text: 'Приостановлен статус перевозчика ' + c.name + ' до устранения замечаний.' }); save(); render(); toast(c.name + ': доступ ограничен до устранения замечаний', 'bad'); }
 function resetDemo() { Store.reset(); DB = seed(); save(); CALC = null; render(); toast('Демонстрационные данные восстановлены'); }
 [register, approveApp, rejectApp, verifyCarrier, suspendCarrier, resetDemo].forEach(f => window[f.name] = f);
 

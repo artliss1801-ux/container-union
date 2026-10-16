@@ -2,49 +2,24 @@
 # Этот workflow раз в два дня обращается к базе и держит её активной.
 # Ключ ниже — публикуемый (publishable), он безопасен для открытого репозитория.
 #
-# КАК ПОДКЛЮЧИТЬ (1 минута, делается в браузере):
-#   1) откройте https://github.com/artliss1801-ux/container-union
-#   2) Add file → Create new file
-#   3) имя файла: .github/workflows/keepalive.yml
-#   4) вставьте весь текст этого файла (без первых строк-комментариев и без «---»)
-#   5) Commit changes. Готово: Actions → keep-alive Supabase → Run workflow (для проверки)
+# Как подключить: этот файл должен лежать в репозитории по пути
+#   .github/workflows/keepalive.yml
+# Проще всего — по ссылке-заготовке, которую я прислал (файл создаётся сразу с содержимым).
 
 name: keep-alive Supabase
 
 on:
   schedule:
     - cron: '0 6 */2 * *'      # каждые 2 дня в 06:00 UTC
-  workflow_dispatch:            # запуск вручную: Actions → Run workflow
+  workflow_dispatch:            # запуск вручную: вкладка Actions → Run workflow
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Состояние базы
+      - name: Пинг базы
         run: |
-          URL="https://nciyhaghjqddkqzuimff.supabase.co"
-          KEY="sb_publishable_vL0U2ble-aE4F5juUPNXpQ_raUy-eaR"
-          echo "▸ Проверяю подключение…"
-          CODE=$(curl -s -o /tmp/tariff.json -w "%{http_code}" \
-            -H "apikey: $KEY" -H "Authorization: Bearer $KEY" \
-            "$URL/rest/v1/tariff?select=version,val")
-          echo "HTTP $CODE"
-          if [ "$CODE" != "200" ]; then echo "✗ база не отвечает — проверьте проект в supabase.com"; exit 1; fi
-          python3 - <<'PY'
-          import json
-          d = json.load(open('/tmp/tariff.json'))
-          v = d[0]
-          print('✓ база активна, версия тарифной сетки:', v['version'], '| цена ДТ:', v['val']['fuelPrice'], '₽/л')
-          PY
-          curl -s -o /tmp/cnt.json \
-            -H "apikey: $KEY" -H "Authorization: Bearer $KEY" \
-            "$URL/rest/v1/carriers?select=id&status=eq.verified"
-          python3 - <<'PY'
-          import json
-          try:
-              n = len(json.load(open('/tmp/cnt.json')))
-          except Exception:
-              n = 0
-          need = 50
-          print(f'✓ верифицированных перевозчиков: {n} / {need} до выборов Совета (осталось {max(0, need-n)})')
-          PY
+          U="https://nciyhaghjqddkqzuimff.supabase.co"
+          K="sb_publishable_vL0U2ble-aE4F5juUPNXpQ_raUy-eaR"
+          echo "тариф: $(curl -s -f -H "apikey: $K" "$U/rest/v1/tariff?select=version")"
+          echo "перевозчиков: $(curl -s -f -H "apikey: $K" "$U/rest/v1/carriers?select=id&status=eq.verified" | grep -o id | wc -l) / 50 до выборов Совета"

@@ -6,7 +6,20 @@
 const CFG = window.KONTREIT_CONFIG || {};
 const ONLINE = !!(CFG.supabaseUrl && CFG.supabaseAnonKey && !/ВСТАВЬТЕ|PASTE/i.test(String(CFG.supabaseUrl) + String(CFG.supabaseAnonKey)));
 const SBBASE = String(CFG.supabaseUrl || '').replace(/\/+$/, '') + '/rest/v1/';
-const sbHead = () => ({ 'apikey': CFG.supabaseAnonKey, 'Authorization': 'Bearer ' + CFG.supabaseAnonKey, 'Content-Type': 'application/json' });
+const AUTH = {
+  session: null,
+  load() { try { const s = JSON.parse(localStorage.getItem('ks_session') || 'null'); if (s && s.access_token) AUTH.session = s; } catch (e) { } },
+  save(s) { AUTH.session = s; try { localStorage.setItem('ks_session', JSON.stringify(s)); } catch (e) { } },
+  clear() { AUTH.session = null; try { localStorage.removeItem('ks_session'); } catch (e) { } },
+  get token() { return AUTH.session && AUTH.session.access_token; },
+  get email() { return (AUTH.session && AUTH.session.user && AUTH.session.user.email) || ''; },
+  get name() { return AUTH.email || 'куратор'; }
+};
+AUTH.load();
+const CURATOR = { checked: false, ok: false };
+
+/* Заголовки запросов: apikey — публикуемый ключ проекта, Authorization — вход куратора, если он выполнен */
+const sbHead = () => ({ 'apikey': CFG.supabaseAnonKey, 'Authorization': 'Bearer ' + (AUTH.token || CFG.supabaseAnonKey), 'Content-Type': 'application/json' });
 
 const SB = {
   async select(t, q) {
@@ -17,6 +30,12 @@ const SB = {
   /* Необязательные таблицы (новые в схеме): их отсутствие не должно ломать загрузку */
   async selectOpt(t, q) {
     try { return await SB.select(t, q); } catch (e) { console.warn('[Контейнерный Союз/Supabase] нет таблицы ' + t + ' — пропускаем'); return []; }
+  },
+  /* Обычная вставка новой строки — доступна всем участникам (регистрация, заявки, ставки, журнал) */
+  async insert(t, rows) {
+    const r = await fetch(SBBASE + t, { method: 'POST', headers: { ...sbHead(), 'Prefer': 'return=minimal' }, body: JSON.stringify(rows) });
+    if (!r.ok) throw new Error(t + ' → HTTP ' + r.status + ': ' + (await r.text()).slice(0, 180));
+    return true;
   },
   async upsert(t, rows, onConflict) {
     const r = await fetch(SBBASE + t + (onConflict ? '?on_conflict=' + encodeURIComponent(onConflict) : ''), {
@@ -51,7 +70,25 @@ let SB_STATE = ONLINE ? 'connecting' : 'local';
 function sbSafe(promise) {
   return Promise.resolve(promise)
     .then(() => { SB_STATE = 'ok'; sbBadge(); return true; })
-    .catch(e => { SB_STATE = 'error'; sbBadge(); console.warn('[Контейнерный Союз/Supabase]', e); toast('Нет связи с базой (' + e.message + '). Данные сохранены локально.', 'bad'); return false; });
+    .catch(e => {
+      const msg = String(e && e.message || e);
+      if (/HTTP 401|HTTP 403/.test(msg) && !AUTH.token) {
+        // Изменение отклонила сама база: у гостя нет прав на запись.
+        console.warn('[Контейнерный Союз/Supabase] доступ отклонён:', msg);
+        toast('База отклонила изменение: для этого действия нужен вход куратора. Нажмите «Вход» в шапке.', 'bad');
+        openLogin();
+        return false;
+      }
+      if (/HTTP 401|HTTP 403/.test(msg)) {
+        toast('База отклонила изменение: у аккаунта <b>' + esc(AUTH.name) + '</b> нет прав куратора (нет записи в таблице curators).', 'bad');
+        CURATOR.ok = false; renderAuthBox();
+        return false;
+      }
+      SB_STATE = 'error'; sbBadge();
+      console.warn('[Контейнерный Союз/Supabase]', e);
+      toast('Нет связи с базой (' + esc(msg) + '). Данные сохранены локально.', 'bad');
+      return false;
+    });
 }
 function sbBadge() {
   const el = $('#storeTag'); if (!el) return;
@@ -103,13 +140,14 @@ function sbRefresh() { sbSafe(sbLoadAll()); }
 window.sbRefresh = sbRefresh;
 
 /* ---------- запись (вызывается из действий платформы) ---------- */
-function sbPushCarrier(c)     { if (ONLINE) sbSafe(SB.upsert('carriers', [sbCarrier(c)])); }
-function sbPushApplication(a) { if (ONLINE) sbSafe(SB.upsert('applications', [sbApplication(a)])); }
-function sbPushLoad(l)        { if (ONLINE) sbSafe(SB.upsert('loads', [sbLoad(l)])); }
+/* mode: 'insert' — новая запись (доступно всем); 'upsert' — изменение (только куратор) */
+function sbPushCarrier(c, mode)     { if (ONLINE) sbSafe(mode === 'insert' ? SB.insert('carriers', [sbCarrier(c)]) : SB.upsert('carriers', [sbCarrier(c)])); }
+function sbPushApplication(a, mode) { if (ONLINE) sbSafe(mode === 'insert' ? SB.insert('applications', [sbApplication(a)]) : SB.upsert('applications', [sbApplication(a)])); }
+function sbPushLoad(l, mode)        { if (ONLINE) sbSafe(mode === 'insert' ? SB.insert('loads', [sbLoad(l)]) : SB.upsert('loads', [sbLoad(l)])); }
 function sbPushBid(l, rate, cid, kind) {
   if (!ONLINE) return;
-  sbSafe(SB.upsert('bids', [{ load_id: l.id, carrier_id: cid, rate: rate, days: null, kind: kind || 'bid' }]));
-  sbPushLoad(l);
+  sbSafe(SB.insert('bids', [{ load_id: l.id, carrier_id: cid, rate: rate, days: null, kind: kind || 'bid' }]));
+  if (kind === 'assign') sbPushLoad(l, 'upsert');      // назначение рейса — действие куратора
 }
 function sbPushBallot(voteId, memberId, choice) { if (ONLINE) sbSafe(SB.upsert('vote_ballots', [{ vote_id: voteId, member_id: memberId, choice: choice || 'none' }], 'vote_id,member_id')); }
 function sbPushVote(v) {
@@ -126,10 +164,109 @@ function sbPushTariff() {
   sbSafe(SB.patch('tariff', 'id=eq.1', { version: DB.tariff.version, approved: DB.tariff.approved, approved_by: DB.tariff.approvedBy, val: DB.tariff.val }));
 }
 
+/* ============================================================
+   Вход куратора (Администрация платформы и члены Совета)
+   Пароль вводится в браузере участника и в файлах не хранится.
+   ============================================================ */
+const sbAuthUrl = p => String(CFG.supabaseUrl || '').replace(/\/+$/, '') + '/auth/v1/' + p;
+
+async function sbSignIn(email, password) {
+  const r = await fetch(sbAuthUrl('token?grant_type=password'), {
+    method: 'POST', headers: { 'apikey': CFG.supabaseAnonKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: String(email).trim(), password: password })
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error_description || d.msg || d.message || ('HTTP ' + r.status));
+  AUTH.save({ access_token: d.access_token, refresh_token: d.refresh_token, expires_at: Date.now() + (d.expires_in || 3600) * 1000, user: d.user });
+  await sbCheckCurator();
+  renderAuthBox();
+  return d.user || {};
+}
+async function sbAuthRefresh() {
+  if (!AUTH.session || !AUTH.session.refresh_token) return false;
+  try {
+    const r = await fetch(sbAuthUrl('token?grant_type=refresh_token'), {
+      method: 'POST', headers: { 'apikey': CFG.supabaseAnonKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: AUTH.session.refresh_token })
+    });
+    if (!r.ok) throw new Error('refresh HTTP ' + r.status);
+    const d = await r.json();
+    AUTH.save({ access_token: d.access_token, refresh_token: d.refresh_token, expires_at: Date.now() + (d.expires_in || 3600) * 1000, user: d.user || AUTH.session.user });
+    return true;
+  } catch (e) { AUTH.clear(); return false; }
+}
+async function sbSignOut() {
+  try {
+    if (AUTH.token) await fetch(sbAuthUrl('logout'), { method: 'POST', headers: { 'apikey': CFG.supabaseAnonKey, 'Authorization': 'Bearer ' + AUTH.token } });
+  } catch (e) { }
+  AUTH.clear(); CURATOR.checked = false; CURATOR.ok = false;
+  renderAuthBox(); render();
+  toast('Вы вышли. Действия Администрации снова недоступны.', 'ok');
+}
+/* Проверка, что вошедший действительно в списке кураторов (таблица curators закрыта правилами доступа) */
+async function sbCheckCurator() {
+  CURATOR.checked = true; CURATOR.ok = false;
+  if (!AUTH.token) return false;
+  try {
+    const r = await fetch(SBBASE + 'curators?select=user_id', { headers: sbHead() });
+    const d = await r.json();
+    CURATOR.ok = Array.isArray(d) && d.length > 0;
+  } catch (e) { CURATOR.ok = false; }
+  renderAuthBox();
+  return CURATOR.ok;
+}
+/* Разрешение на действия Администрации: локальный режим — свободно, онлайн — только после входа куратора */
+function needCurator(what) {
+  if (!ONLINE) return true;
+  if (AUTH.token) return true;
+  toast('Действие «' + (what || 'действие Администрации') + '» доступно только куратору. Нажмите «Вход» в шапке.', 'bad');
+  openLogin();
+  return false;
+}
+function openLogin() {
+  if (!ONLINE) { toast('Локальный демо-режим: вход не нужен, все функции доступны.', 'ok'); return; }
+  openModal('Вход для Администрации и Совета', `
+    <div class="note">Вход нужен только для действий Администрации: верификация перевозчиков, утверждение тарифа, назначение и публикация выборов Совета. Обычным участникам вход не требуется — регистрация, заявки и ставки работают без него.</div>
+    <div class="grid g2" style="margin-top:12px">
+      <div class="field"><label>E-mail куратора</label><input type="email" id="lg_email" value="${esc(AUTH.email)}" autocomplete="username"></div>
+      <div class="field"><label>Пароль</label><input type="password" id="lg_pass" autocomplete="current-password"></div>
+    </div>
+    <div class="mini">Аккаунт создаётся в Supabase: Authentication → Users → Add user. Права выдаются записью в таблице <b>curators</b> (инструкция — в файле supabase/security.sql).</div>
+  `, '<button class="btn pri" onclick="doLogin()">Войти</button><button class="btn" onclick="closeModal()">Отмена</button>');
+  setTimeout(() => { const el = $('#lg_pass'); if (el) el.focus(); }, 60);
+}
+async function doLogin() {
+  const e = $('#lg_email').value, p = $('#lg_pass').value;
+  if (!e || !p) { toast('Укажите e-mail и пароль', 'bad'); return; }
+  try {
+    const u = await sbSignIn(e, p);
+    closeModal();
+    const rights = CURATOR.ok ? 'права куратора подтверждены' : 'вход выполнен, но записи в таблице curators нет — права не выданы';
+    toast('Вход выполнен: <b>' + esc(u.email || e) + '</b> — ' + rights, CURATOR.ok ? 'ok' : 'bad');
+    sbSafe(sbLoadAll(true));
+    render();
+  } catch (err) { toast('Не удалось войти: ' + esc(err.message), 'bad'); }
+}
+function renderAuthBox() {
+  const el = $('#authBox'); if (!el) return;
+  if (!ONLINE) { el.innerHTML = '<span class="tag">локальный демо-режим</span>'; return; }
+  if (!AUTH.token) { el.innerHTML = '<button class="btn sm" onclick="openLogin()">Вход для Администрации</button>'; return; }
+  el.innerHTML = '<span class="tag badge ' + (CURATOR.ok ? 'b-ok' : 'b-warn') + '" title="' + (CURATOR.ok ? 'Права куратора подтверждены' : 'Нет записи в таблице curators') + '">' +
+    (CURATOR.ok ? 'куратор: ' : 'вошли: ') + esc(AUTH.name) + '</span> <button class="btn sm" onclick="sbSignOut()">Выйти</button>';
+}
+[openLogin, doLogin, sbSignOut].forEach(f => window[f.name] = f);
+window.renderAuthBox = renderAuthBox;
+
 /* ---------- запуск ---------- */
 if (ONLINE) {
   sbBadge();
-  sbLoadAll(true).catch(e => { SB_STATE = 'error'; sbBadge(); toast('База недоступна, работаем в локальном режиме. ' + e.message, 'bad'); });
+  renderAuthBox();
+  (async () => {
+    if (AUTH.session && (!AUTH.session.expires_at || AUTH.session.expires_at - Date.now() < 120000)) await sbAuthRefresh();
+    await sbCheckCurator();
+    sbLoadAll(true).catch(e => { SB_STATE = 'error'; sbBadge(); toast('База недоступна, работаем в локальном режиме. ' + e.message, 'bad'); });
+  })();
 } else {
   sbBadge();
+  renderAuthBox();
 }
