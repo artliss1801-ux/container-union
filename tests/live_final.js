@@ -23,9 +23,9 @@ const count = async t => (await (await fetch(`${SBURL}/rest/v1/${t}?select=id`, 
   const T = (n, f) => { try { const r = f(); console.log('✓', n, r ? '— ' + r : ''); } catch (e) { console.log('✗', n, '→', e.message); errs.push(n); } };
   for (let i = 0; i < 40; i++) { await sleep(500); if (w.eval('SB_STATE') === 'ok') break; }
   T('сайт подключён к базе', () => d.querySelector('#storeTag').textContent);
-  T('в шапке появилась кнопка входа для Администрации', () => {
+  T('в шапке есть кнопка входа', () => {
     const b = norm(d.querySelector('#authBox').textContent);
-    if (!/Вход для Администрации/.test(b)) throw new Error(b);
+    if (!/Вход/.test(b)) throw new Error(b);
     return b.trim();
   });
   T('кабинет: админ-панель закрыта до входа', () => {

@@ -244,7 +244,7 @@ function transitionVoteCard(v, isExample) {
   </div>`;
 }
 function approveTransition(id) {
-  if (!needCurator('утверждение тарифного решения')) return;
+  if (!needAdmin('утверждение тарифного решения')) return;
   const v = DB.votes.find(x => x.id === id);
   if (!v || v.status !== 'voting') return;
   v.status = 'passed';
@@ -256,7 +256,7 @@ function approveTransition(id) {
   toast('Решение ' + v.id + ' утверждено в переходный период. Тарифная сетка обновлена, запись добавлена в реестр решений.', 'ok');
 }
 function scheduleElections() {
-  if (!needCurator('назначение выборов Совета')) return;
+  if (!needAdmin('назначение выборов Совета')) return;
   const pr = electionProgress();
   if (!pr.ready) { toast('Выборы назначаются при ' + pr.need + ' реальных верифицированных перевозчиках. Сейчас: ' + pr.n + '.', 'bad'); return; }
   DB.settings.elections = { announced: todayISO(), candidatesDeadline: addDays(todayISO(), 20), voteDeadline: addDays(todayISO(), 35) };
@@ -266,7 +266,7 @@ function scheduleElections() {
   toast('Выборы назначены. Выдвижение кандидатов — 20 дней, голосование участников — 15 дней.', 'ok');
 }
 function publishCouncil() {
-  if (!needCurator('публикация состава Совета')) return;
+  if (!needAdmin('публикация состава Совета')) return;
   const cands = realVerified().slice(0, 9);
   if (cands.length < 9) { toast('Для публикации состава нужно минимум 9 кандидатов. Сейчас: ' + cands.length + '.', 'bad'); return; }
   DB.members = cands.map((c, i) => ({
@@ -281,9 +281,9 @@ function publishCouncil() {
   toast('Состав Совета опубликован. Переходный период завершён — решения принимаются голосованием.', 'ok');
 }
 function toggleDemoCouncil() {
-  if (!needCurator('переключение учебного режима')) return;
+  if (!needAdmin('переключение учебного режима')) return;
   DB.settings.demoCouncil = !DB.settings.demoCouncil;
-  if (DB.settings.demoCouncil && ROLE !== 'council' && ROLE !== 'admin') { ROLE = 'council'; Store.set('ks_role', ROLE); $('#roleSel').value = 'council'; }
+  if (DB.settings.demoCouncil && !ONLINE && ROLE !== 'council' && ROLE !== 'admin') { ROLE = 'council'; Store.set('ks_role', ROLE); }
   sbPushSettings();
   save(); render();
   toast(DB.settings.demoCouncil ? 'Учебный режим включён: показана механика голосования.' : 'Учебный режим выключен.', 'ok');
@@ -570,7 +570,8 @@ window.docFull = docFull;
    ВКЛАДКА 6. КАБИНЕТ
    ============================================================ */
 function viewCabinet() {
-  if (ROLE === 'guest' || ROLE === 'admin') return `<div class="grid g23">
+  if (ROLE === 'admin') return adminPanel();
+  if (ROLE === 'guest') return `<div class="grid g23">
     <div class="card">
       <h2>Регистрация перевозчика на платформе</h2>
       <div class="sub">Участие бесплатное. После верификации открываются реестр, калькулятор, биржа грузов и право выдвижения в Совет.</div>
@@ -584,6 +585,14 @@ function viewCabinet() {
         <div class="field"><label>Единиц техники</label><input type="number" id="r_fleet" value="8"></div>
         <div class="field"><label>Контейнерных площадок</label><input type="number" id="r_cont" value="6"></div>
       </div>
+      <hr>
+      <div class="smallcaps" style="margin:8px 0 4px">Личный кабинет (создаётся сразу)</div>
+      <div class="grid g2">
+        <div class="field"><label>E-mail для входа</label><input type="email" id="r_email" placeholder="director@company.ru" autocomplete="username"></div>
+        <div class="field"><label>Пароль (не менее 6 знаков)</label><input type="password" id="r_pass" placeholder="придумайте пароль" autocomplete="new-password"></div>
+      </div>
+      <div class="fnote" style="margin-bottom:10px">После отправки заявки вы войдёте в свой кабинет, а роль «Перевозчик» платформа присвоит автоматически.
+      Пароль никому не сообщается и хранится только в зашифрованном виде.</div>
       <div class="smallcaps" style="margin:8px 0 4px">Типы контейнеров</div>
       <div class="row" style="gap:14px">
         ${['20′', '40′', '40′HC', '45′HC', 'реф'].map((t, i) => '<label class="mini"><input type="checkbox" id="r_t' + i + '" ' + (i < 3 ? 'checked' : '') + '> ' + t + '</label>').join('')}
@@ -616,10 +625,40 @@ function viewCabinet() {
         </ol>
       </div>
     </div>
-  </div>${ROLE === 'admin' ? adminPanel() : ''}`;
+  </div>`;
+
+  if (ROLE === 'council') {
+    const m = (DB.members || []).find(x => x.id === VOTE_AS) || { name: PROFILE.email || 'член Совета', company: '', district: '', id: '' };
+    const openVotes = DB.votes.filter(v => v.status === 'voting');
+    return `<div class="grid g23">
+      <div class="card">
+        <h2>Кабинет члена Совета перевозчиков</h2>
+        <div class="sub">Роль присвоена администратором платформы. Голосование — личное: бюллетень подписан вашей карточкой в Совете.</div>
+        <div class="grid g3">
+          <div class="kpi" style="padding:10px"><div class="k" style="font-size:16px">${esc(m.name || '—')}</div><div class="l">член Совета</div></div>
+          <div class="kpi" style="padding:10px"><div class="k" style="font-size:16px">${esc(m.company || '—')}</div><div class="l">организация</div></div>
+          <div class="kpi" style="padding:10px"><div class="k" style="font-size:16px">${openVotes.length}</div><div class="l">вопросов на голосовании</div></div>
+        </div>
+        ${m.id ? '' : '<div class="note warn" style="margin-top:12px">Ваш аккаунт назначен членом Совета, но место в Совете ещё не привязано (кандидаты появляются после выборов). Обратитесь к администратору платформы.</div>'}
+        <div class="row" style="margin-top:12px"><button class="btn pri" onclick="showTab('council')">Перейти к вопросам Совета</button></div>
+      </div>
+      <div class="card">
+        <h3>Что доступно члену Совета</h3>
+        <ul class="mini" style="padding-left:20px">
+          <li>голосовать лично по каждому вопросу — бюллетень записывается от вашего имени;</li>
+          <li>вносить проекты решений (тариф, правила платформы, Устав);</li>
+          <li>видеть поименные голоса и итоги с порогами 6/5/7 из 9.</li>
+        </ul>
+      </div>
+    </div>`;
+  }
 
   if (ROLE === 'carrier') {
-    const c = DB.carriers.find(x => x.id === (ME || 'C-101'));
+    const c = DB.carriers.find(x => x.id === ME) || DB.carriers.find(x => x.owner && x.owner === PROFILE.id);
+    if (!c) return `<div class="card"><h2>Личный кабинет перевозчика</h2>
+      <div class="sub">Аккаунт создан, но карточка вашей компании не найдена в реестре.</div>
+      <div class="note warn">Заполните заявку на регистрацию — карточка появится в реестре со статусом «ожидает верификации».</div>
+      <div class="row" style="margin-top:12px"><button class="btn pri" onclick="logoutToRegister()">Заполнить заявку</button></div></div>`;
     const r = rating(c);
     const eligible = r.score >= 80 && c.metrics.tenureMonths >= 12;
     const myBids = DB.loads.filter(l => l.carrierId === c.id);
@@ -743,12 +782,49 @@ function adminPanel() {
         <td style="text-align:right"><button class="btn sm ok" onclick="verifyCarrier('${c.id}')">Верифицировать</button> <button class="btn sm bad" onclick="suspendCarrier('${c.id}')">Отклонить</button></td></tr>`).join('') +
       '</tbody></table>' : '<p class="mini">Новых заявок нет.</p>'}
     <hr>
+    ${rolesPanel()}
+    <hr>
     <div class="row between">
       <div><h3 style="margin:0">Демонстрационные данные</h3><div class="mini">Сброс вернёт реестр, тарифную сетку и голосования к исходному состоянию.</div></div>
       <button class="btn" onclick="sbRefresh()">⟳ Обновить данные из базы</button><button class="btn bad" onclick="resetDemo()">Сбросить демо-данные</button>
     </div>
   </div>`;
 }
+
+/* ---------- Пользователи и роли: назначать и снимать может только администратор ---------- */
+function rolesPanel() {
+  if (!ONLINE) {
+    return `<h3>Пользователи и роли</h3>
+      <div class="note">В онлайн-версии здесь список всех аккаунтов платформы с их ролями.
+      Назначать и снимать администраторов и членов Совета может только администратор платформы;
+      роль перевозчика присваивается автоматически при регистрации.
+      В локальном демо-режиме базы нет — список появится после подключения.</div>`;
+  }
+  const rows = (DB.profiles || []);
+  const badge = r => r === 'admin' ? 'b-gold' : r === 'council' ? 'b-info' : 'b-ok';
+  const btns = p => {
+    if (p.is_primary) return '<span class="mini">главный администратор — изменить нельзя</span>';
+    const self = p.id === PROFILE.id;
+    return ['carrier', 'council', 'admin'].map(r =>
+      '<button class="btn sm ' + (p.role === r ? 'ok' : '') + '" ' + (self ? 'disabled title="Нельзя менять свою роль"' : '') +
+      ' onclick="setUserRole(\'' + p.id + '\',\'' + r + '\',\'' + esc(p.email || '') + '\')">' + (ROLE_NAME[r] || r) + '</button>').join(' ') +
+      ' <button class="btn sm bad" ' + (self ? 'disabled' : '') + ' onclick="removeUserAccess(\'' + p.id + '\',\'' + esc(p.email || '') + '\')">Снять доступ</button>';
+  };
+  return `<h3>Пользователи и роли</h3>
+    <div class="mini" style="margin-bottom:8px">Вы — администратор платформы: назначайте и снимайте администраторов и членов Совета.
+    Роль перевозчика присваивается автоматически при регистрации, менять её вручную нужно только в исключительных случаях.
+    Пароли участники задают сами при регистрации; пароль можно сменить в Supabase → Authentication → Users.</div>
+    ${rows.length ? `<div class="tbl-scroll" style="max-height:320px"><table>
+      <thead><tr><th>Участник</th><th>Роль</th><th>Доступ</th></tr></thead>
+      <tbody>${rows.map(p => `<tr>
+        <td><b>${esc(p.email || '—')}</b><div class="mini">зарегистрирован ${dt(String(p.created_at || '').slice(0, 10))}${p.is_primary ? ' · владелец платформы' : ''}</div></td>
+        <td><span class="badge ${badge(p.role)}">${ROLE_NAME[p.role] || p.role}</span></td>
+        <td style="text-align:right">${btns(p)}</td>
+      </tr>`).join('')}</tbody></table></div>` : '<p class="mini">Пока только вы. Как только перевозчики зарегистрируются, их аккаунты появятся здесь со ролью «Перевозчик».</p>'}
+    <div class="row" style="margin-top:10px"><button class="btn" onclick="refreshProfiles().then(render)">⟳ Обновить список</button></div>`;
+}
+window.rolesPanel = rolesPanel;
+
 function register() {
   if (!$('#r_c1').checked || !$('#r_c2').checked || !$('#r_c3').checked) { toast('Для регистрации необходимо принять Устав, Правила и подтвердить документы', 'bad'); return; }
   const types = ['20′', '40′', '40′HC', '45′HC', 'реф'].filter((t, i) => $('#r_t' + i).checked);
@@ -760,16 +836,41 @@ function register() {
     docs: { egrul: true, osgop: true, ports: false, etrn: true, taxes: true },
     metrics: { completed: 0, onTime: 100, failures: 0, reviews: 0, tenureMonths: 0, discipline: 80, transparency: 55 }
   };
+  const email = $('#r_email') ? $('#r_email').value.trim() : '';
+  const pass = $('#r_pass') ? $('#r_pass').value : '';
+  if (ONLINE) {
+    if (!email || !pass) { toast('Укажите e-mail и пароль — они создадут личный кабинет', 'bad'); return; }
+    if (pass.length < 6) { toast('Пароль должен быть не короче 6 знаков', 'bad'); return; }
+  }
+  c.owner = ONLINE && AUTH.userId ? AUTH.userId : null;
   DB.carriers.push(c); ME = c.id; Store.set('ks_me', ME);
   DB.applications.unshift({ id: 'З-2026-' + (8 + DB.applications.length), name: c.name, city: c.city, inn: c.inn, fleet: c.fleet, containers: c.containers, submitted: todayISO(), status: 'pending', docs: true });
   DB.log.unshift({ at: todayISO(), text: 'Новая заявка на верификацию: ' + c.name + ' (' + c.city + ').' });
   sbPushCarrier(c, 'insert'); sbPushApplication(DB.applications[0], 'insert'); sbJournal('Новая заявка на верификацию: ' + c.name + ' (' + c.city + ').');
   save();
-  toast('Заявка отправлена. Статус «Ожидает верификации», проверка — до 3 рабочих дней. Включён демо-режим перевозчика.', 'ok');
-  ROLE = 'carrier'; Store.set('ks_role', ROLE); $('#roleSel').value = 'carrier'; render();
+  if (!ONLINE) {
+    toast('Заявка отправлена. Статус «Ожидает верификации», проверка — до 3 рабочих дней.', 'ok');
+    ROLE = 'carrier'; Store.set('ks_role', ROLE); render();
+    return;
+  }
+  /* Онлайн: сначала создаём личный кабинет, затем заявку; роль «Перевозчик» присваивает база */
+  toast('Создаём личный кабинет…', 'ok');
+  sbSignUp(email, pass)
+    .then(() => { c.owner = AUTH.userId; sbPushCarrier(c, 'insert'); sbPushApplication(DB.applications[0], 'insert'); })
+    .then(async () => { await sbLoadProfile(); await sbLoadAll(true); applyRole(); render(); })
+    .then(() => toast('Готово: личный кабинет создан, заявка отправлена. Роль — <b>Перевозчик</b>, карточка «ожидает верификации».', 'ok'))
+    .catch(err => {
+      const msg = String(err.message || err);
+      toast(/already|существ/i.test(msg)
+        ? 'Такой e-mail уже зарегистрирован. Нажмите «Вход» в шапке — кабинет уже ждёт вас.'
+        : 'Не удалось создать кабинет: ' + esc(msg), 'bad');
+      render();
+    });
 }
+function logoutToRegister() { sbSignOut(); showTab('cabinet'); }
+window.logoutToRegister = logoutToRegister;
 function approveApp(id) {
-  if (!needCurator('верификация перевозчика')) return;
+  if (!needAdmin('верификация перевозчика')) return;
   const a = DB.applications.find(x => x.id === id); a.status = 'verified';
   const c = DB.carriers.find(x => x.inn === a.inn || x.name === a.name);
   if (c) { c.status = 'verified'; c.metrics.transparency = Math.min(100, c.metrics.transparency + 25); c.docs.osgop = true; }
@@ -777,23 +878,14 @@ function approveApp(id) {
   DB.log.unshift({ at: todayISO(), text: 'Верифицирован участник: ' + a.name + '.' });
   save(); render(); toast(a.name + ' верифицирован(а) и добавлен(а) в реестр', 'ok');
 }
-function rejectApp(id) { if (!needCurator('отклонение заявки')) return; const a = DB.applications.find(x => x.id === id); a.status = 'rejected'; sbPushApplication(a); save(); render(); toast('Заявка отклонена, заявителю направлены замечания'); }
-function verifyCarrier(id) { if (!needCurator('верификация перевозчика')) return; const c = DB.carriers.find(x => x.id === id); c.status = 'verified'; c.metrics.transparency = Math.min(100, c.metrics.transparency + 30); sbPushCarrier(c); DB.log.unshift({ at: todayISO(), text: 'Верифицирован перевозчик ' + c.name + '.' }); save(); render(); toast(c.name + ' — статус «Верифицирован»', 'ok'); }
-function suspendCarrier(id) { if (!needCurator('приостановка перевозчика')) return; const c = DB.carriers.find(x => x.id === id); c.status = 'suspended'; sbPushCarrier(c); DB.log.unshift({ at: todayISO(), text: 'Приостановлен статус перевозчика ' + c.name + ' до устранения замечаний.' }); save(); render(); toast(c.name + ': доступ ограничен до устранения замечаний', 'bad'); }
+function rejectApp(id) { if (!needAdmin('отклонение заявки')) return; const a = DB.applications.find(x => x.id === id); a.status = 'rejected'; sbPushApplication(a); save(); render(); toast('Заявка отклонена, заявителю направлены замечания'); }
+function verifyCarrier(id) { if (!needAdmin('верификация перевозчика')) return; const c = DB.carriers.find(x => x.id === id); c.status = 'verified'; c.metrics.transparency = Math.min(100, c.metrics.transparency + 30); sbPushCarrier(c); DB.log.unshift({ at: todayISO(), text: 'Верифицирован перевозчик ' + c.name + '.' }); save(); render(); toast(c.name + ' — статус «Верифицирован»', 'ok'); }
+function suspendCarrier(id) { if (!needAdmin('приостановка перевозчика')) return; const c = DB.carriers.find(x => x.id === id); c.status = 'suspended'; sbPushCarrier(c); DB.log.unshift({ at: todayISO(), text: 'Приостановлен статус перевозчика ' + c.name + ' до устранения замечаний.' }); save(); render(); toast(c.name + ': доступ ограничен до устранения замечаний', 'bad'); }
 function resetDemo() { Store.reset(); DB = seed(); save(); CALC = null; render(); toast('Демонстрационные данные восстановлены'); }
-[register, approveApp, rejectApp, verifyCarrier, suspendCarrier, resetDemo].forEach(f => window[f.name] = f);
+[register, approveApp, rejectApp, verifyCarrier, suspendCarrier, resetDemo, logoutToRegister].forEach(f => window[f.name] = f);
 
 /* ============================================================
    Запуск
    ============================================================ */
-$('#roleSel').value = ROLE;
-$('#roleSel').addEventListener('change', e => {
-  ROLE = e.target.value; Store.set('ks_role', ROLE);
-  if (ROLE === 'carrier' && !ME) { ME = 'C-101'; Store.set('ks_me', ME); }
-  if (ROLE === 'council') VOTE_AS = 'M-1';
-  $('#storeTag').textContent = 'режим: ' + e.target.selectedOptions[0].textContent;
-  toast('Режим просмотра: <b>' + e.target.selectedOptions[0].textContent + '</b>');
-  render();
-});
-$('#storeTag').textContent = 'хранилище: ' + (Store.ls ? 'локальное (браузер)' : 'сессионное (память)');
-render();
+/* Запуск перенесён в конец сборки (p5.online.js): там уже определены ONLINE и роль участника.
+   Режима просмотра нет — роль определяется аккаунтом. */

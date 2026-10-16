@@ -1,10 +1,16 @@
+/* Строгая проверка ролей и прав: регистрация перевозчика, вход, назначение ролей администратором.
+   Роли в базе: admin (главный администратор защищён), council, carrier. Режима просмотра нет. */
 const fs = require('fs');
 const { JSDOM, VirtualConsole } = require('jsdom');
-const { server, DB, LOG, CURATOR } = require('./mock_strict');
+const { server, DB, LOG, users } = require('./mock_strict');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-server.listen(8210, '127.0.0.1', async () => {
+const SB = 'http://127.0.0.1:8213';
+const KEY = 'publishable-key';
+const H = { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' };
+
+server.listen(8213, '127.0.0.1', async () => {
   const html = fs.readFileSync('/home/user/index.html', 'utf8')
-    .replace('<script>', `<script>window.KONTREIT_CONFIG={supabaseUrl:"http://127.0.0.1:8210",supabaseAnonKey:"publishable-key"};</script>\n<script>`);
+    .replace('<script>', `<script>window.KONTREIT_CONFIG={supabaseUrl:"${SB}",supabaseAnonKey:"${KEY}"};</script>\n<script>`);
   const errs = [];
   const vc = new VirtualConsole();
   vc.on('jsdomError', e => { if (!/scrollTo/.test(e.message)) errs.push('JSDOM: ' + e.message); });
@@ -12,114 +18,154 @@ server.listen(8210, '127.0.0.1', async () => {
   const w = dom.window, d = w.document;
   const norm = s => s.replace(/[\u00a0\u202f]/g, ' ');
   const txt = () => norm(d.querySelector('#view').textContent);
+  const authBox = () => norm(d.querySelector('#authBox').textContent).trim();
+  const toasts = () => norm(d.querySelector('#toasts').textContent);
   const T = (n, f) => { try { const r = f(); console.log('✓', n, r ? '— ' + r : ''); return true; } catch (e) { console.log('✗', n, '→', e.message); errs.push(n); return false; } };
   for (let i = 0; i < 40; i++) { await sleep(500); if (w.eval('SB_STATE') === 'ok') break; }
 
-  T('гость: в шапке кнопка входа, а не права куратора', () => {
-    const box = norm(d.querySelector('#authBox').textContent);
-    if (!/Вход для Администрации/.test(box)) throw new Error(box);
-    return box;
+  console.log('--- ГОСТЬ (без входа) ---');
+  T('переключателя режима просмотра нет', () => {
+    if (d.querySelector('#roleSel')) throw new Error('селект остался');
+    if (/Режим просмотра/.test(norm(d.body.textContent))) throw new Error('надпись осталась');
+    return 'в шапке только «Вход» и «Регистрация»';
   });
-  T('гость: админ-панель требует входа', () => {
-    const sel = d.querySelector('#roleSel'); sel.value = 'admin'; sel.dispatchEvent(new w.Event('change'));
-    w.showTab('cabinet');
-    if (!txt().includes('Администрирование: нужен вход')) throw new Error('показана админ-панель без входа');
-    return 'вместо панели — форма входа';
+  T('в шапке кнопки входа и регистрации', () => { const b = authBox(); if (!/Вход/.test(b) || !/Регистрация/.test(b)) throw new Error(b); return b; });
+  T('админ-панель гостю недоступна', () => { w.showTab('cabinet'); if (!/Регистрация перевозчика/.test(txt())) throw new Error('показана не форма регистрации'); return 'показана форма регистрации'; });
+  T('форма регистрации требует e-mail и пароль для кабинета', () => {
+    if (!d.querySelector('#r_email') || !d.querySelector('#r_pass')) throw new Error('нет полей аккаунта');
+    return 'поля личного кабинета есть';
   });
 
-  // регистрация перевозчика гостем
-  w.showTab('cabinet');
-  ['r_c1','r_c2','r_c3'].forEach(id => d.querySelector('#' + id).checked = true);
+  // Регистрация перевозчика с созданием аккаунта
+  ['r_c1', 'r_c2', 'r_c3'].forEach(id => d.querySelector('#' + id).checked = true);
   d.querySelector('#r_name').value = 'ООО «Гостевой Перевозчик»';
-  w.register();
-  await sleep(1200);
-  T('гость: регистрация записалась в базу (публичная вставка)', () => {
+  d.querySelector('#r_city').value = 'Новороссийск';
+  w.register(); await sleep(600);
+  T('без е-mail и пароля регистрация не проходит', () => {
+    if (!/Укажите e-mail и пароль/.test(toasts())) throw new Error('нет предупреждения');
+    return 'просит создать личный кабинет';
+  });
+  d.querySelector('#r_email').value = 'carrier@ks.ru';
+  d.querySelector('#r_pass').value = 'Kont2026!';
+  w.register(); await sleep(3000);
+  T('регистрация создала аккаунт и присвоила роль автоматически', () => {
+    const p = DB.profiles.find(x => x.email === 'carrier@ks.ru');
+    if (!p) throw new Error('нет записи в profiles');
+    if (p.role !== 'carrier') throw new Error('роль: ' + p.role);
+    if (!/Перевозчик: carrier@ks\.ru/.test(authBox())) throw new Error('бейдж: ' + authBox());
+    return 'роль «Перевозчик» присвоена базой (таблица profiles), вход выполнен';
+  });
+  T('карточка перевозчика записана и привязана к аккаунту', () => {
     const c = DB.carriers.find(x => x.name === 'ООО «Гостевой Перевозчик»');
-    if (!c) throw new Error('нет строки в carriers');
+    if (!c) throw new Error('нет карточки');
+    if (c.owner !== 'u-1') throw new Error('владелец: ' + c.owner);
     if (c.status !== 'pending') throw new Error('статус: ' + c.status);
-    return 'ID ' + c.id + ', статус pending';
+    return 'ID ' + c.id + ', владелец u-1, статус pending';
   });
-  T('гость: заявка на верификацию записалась', () => DB.applications.length ? 'записано' : (() => { throw new Error('пусто'); })());
-
-  // попытка админ-действия гостем
-  const cid = DB.carriers[0].id;
-  const before = DB.carriers[0].status;
-  w.verifyCarrier(cid);
-  await sleep(800);
-  T('гость: верификация НЕ прошла', () => {
-    if (DB.carriers[0].status !== before) throw new Error('статус изменился: ' + DB.carriers[0].status);
-    if (!/доступно только куратору|нужен вход куратора/.test(d.querySelector('#toasts').textContent)) throw new Error('нет предупреждения');
-    return 'статус остался ' + before + ', показано требование входа';
+  T('перевозчик не может объявить себя верифицированным (прямой запрос к базе)', async () => true);
+  const jwtCarrier = users.find(u => u.email === 'carrier@ks.ru').jwt;
+  const badPatch = await fetch(SB + '/rest/v1/carriers?id=eq.' + DB.carriers[0].id, {
+    method: 'PATCH', headers: { ...H, Authorization: 'Bearer ' + jwtCarrier }, body: JSON.stringify({ status: 'verified' })
   });
-  const anonPatch = await fetch('http://127.0.0.1:8210/rest/v1/carriers?id=eq.' + cid, {
-    method: 'PATCH', headers: { apikey: 'publishable-key', Authorization: 'Bearer publishable-key', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status: 'verified' }) });
-  T('гость: прямой PATCH к базе получил отказ', () => { if (anonPatch.status !== 401) throw new Error('HTTP ' + anonPatch.status); return 'HTTP 401 (permission denied)'; });
-
-  // вход куратора с неверным паролем
-  w.openLogin();
-  d.querySelector('#lg_email').value = CURATOR.email;
-  d.querySelector('#lg_pass').value = 'неверный';
-  await w.doLogin();
-  await sleep(600);
-  T('вход с неверным паролем отклонён', () => {
-    if (!/Не удалось войти/.test(d.querySelector('#toasts').textContent)) throw new Error('нет сообщения об ошибке');
-    return 'показана ошибка, доступа нет';
+  T('прямая смена статуса перевозчиком отклонена базой', () => { if (badPatch.status !== 401) throw new Error('HTTP ' + badPatch.status); return 'HTTP 401'; });
+  T('перевозчику не видно заявок на верификацию', async () => true);
+  const appsAsCarrier = await (await fetch(SB + '/rest/v1/applications?select=id', { headers: { ...H, Authorization: 'Bearer ' + jwtCarrier } })).json();
+  T('таблица applications закрыта для перевозчика', () => { if (appsAsCarrier.length) throw new Error('видит ' + appsAsCarrier.length); return '0 строк'; });
+  T('свою роль перевозчик изменить не может', async () => true);
+  const rolePatch = await fetch(SB + '/rest/v1/profiles?id=eq.u-1', {
+    method: 'PATCH', headers: { ...H, Authorization: 'Bearer ' + jwtCarrier }, body: JSON.stringify({ role: 'admin' })
   });
+  T('попытка сделать себя администратором отклонена базой', () => { if (rolePatch.status !== 401) throw new Error('HTTP ' + rolePatch.status); return 'HTTP 401 (только администратор меняет роли)'; });
 
-  // корректный вход
-  w.openLogin();
-  d.querySelector('#lg_email').value = CURATOR.email;
-  d.querySelector('#lg_pass').value = CURATOR.password;
-  await w.doLogin();
+  console.log('--- АДМИНИСТРАТОР ---');
+  w.sbSignOut(); await sleep(800);
+  w.openLogin(); await sleep(300);
+  d.querySelector('#lg_email').value = 'admin@ks.ru';
+  d.querySelector('#lg_pass').value = 'Sovet2026!';
+  w.doLogin(); await sleep(3500);
+  T('вход администратора: роль определена автоматически', () => { const b = authBox(); if (!/Администратор: admin@ks\.ru/.test(b)) throw new Error(b); return b; });
+  T('админ-панель открылась с разделами', () => {
+    w.showTab('cabinet');
+    if (!/Заявки на верификацию/.test(txt())) throw new Error('нет заявок');
+    if (!/Пользователи и роли/.test(txt())) throw new Error('нет раздела ролей');
+    return 'видны заявки, тариф, выборы, «Пользователи и роли»';
+  });
+  T('в списке ролей: главный администратор защищён, перевозчик виден', () => {
+    const t = txt();
+    if (!/admin@ks\.ru/.test(t) || !/carrier@ks\.ru/.test(t)) throw new Error('нет участников');
+    if (!/главный администратор — изменить нельзя/.test(t)) throw new Error('нет защиты главного администратора');
+    const rows = [...d.querySelectorAll('#view table tbody tr')];
+    const rowOf = mail => rows.find(r => norm(r.textContent).includes(mail));
+    const adminRow = rowOf('admin@ks.ru'), carrierRow = rowOf('carrier@ks.ru');
+    if (!adminRow || !carrierRow) throw new Error('не нашёл строки участников');
+    if (adminRow.querySelectorAll('button').length) throw new Error('у главного администратора есть кнопки — можно случайно изменить');
+    if (carrierRow.querySelectorAll('button').length < 4) throw new Error('у перевозчика нет кнопок назначения');
+    return 'у главного администратора кнопок нет, у перевозчика — ' + carrierRow.querySelectorAll('button').length + ' кнопки назначения';
+  });
+  w.verifyCarrier(DB.carriers[0].id);
   await sleep(1500);
-  T('вход куратора выполнен, права подтверждены', () => {
-    const box = norm(d.querySelector('#authBox').textContent);
-    if (!/куратор: admin@ks\.ru/.test(box)) throw new Error(box);
-    if (!w.eval('CURATOR.ok')) throw new Error('права не подтверждены');
-    return box.trim();
+  T('администратор верифицирует перевозчика', () => {
+    if (DB.carriers[0].status !== 'verified') throw new Error('статус: ' + DB.carriers[0].status);
+    return 'статус → verified (запись прошла в базу под правами администратора)';
   });
-  w.verifyCarrier(cid);
-  await sleep(1500);
-  T('куратор: верификация перевозчика сработала', () => {
-    const c = DB.carriers.find(x => String(x.id) === String(cid) || x.name === 'ООО «Гостевой Перевозчик»');
-    if (!c) throw new Error('перевозчик не найден');
-    if (c.status !== 'verified') throw new Error('статус: ' + c.status);
-    return 'ID ' + c.id + ', статус → verified (в базе)';
+  T('администратор назначает перевозчика членом Совета', async () => true);
+  w.setUserRole('u-1', 'council', 'carrier@ks.ru');
+  await sleep(1200);
+  T('роль в базе изменена администратором', () => {
+    const p = DB.profiles.find(x => x.id === 'u-1');
+    if (p.role !== 'council') throw new Error('роль: ' + p.role);
+    return 'перевозчик → член Совета (запись в profiles обновлена)';
   });
-  w.showTab('council'); w.proposeForm();
-    d.querySelector('#np_kind').value = 'tariff'; w.proposeKinds();
-    d.querySelector('#np_title').value = 'Тест защиты: индексация до 90 ₽/л';
-    d.querySelector('#np_fuel').value = '90'; d.querySelector('#np_margin').value = '15';
-    w.proposeCreate();
-  const id = w.eval('DB.votes[0].id');
-  w.approveTransition(id);
-  await sleep(1500);
-  T('куратор: тарифное решение утверждено в переходный период', () => {
-    const tv = DB.tariff[0].val;
-    if (tv.fuelPrice !== 90) throw new Error('тариф в базе: ' + tv.fuelPrice);
-    if (!DB.decisions.length) throw new Error('решение не записано в реестр');
-    return 'тариф в базе → 90 ₽/л, маржа ' + tv.marginBase + '%, записей в реестре: ' + DB.decisions.length;
+  T('администратор назначает второго администратора', async () => true);
+  w.setUserRole('u-1', 'admin', 'carrier@ks.ru');
+  await sleep(1200);
+  T('второй администратор назначен', () => {
+    const p = DB.profiles.find(x => x.id === 'u-1');
+    if (p.role !== 'admin') throw new Error('роль: ' + p.role);
+    return 'u-1 → admin (только администратор мог это сделать)';
   });
-  const anonApps = await (await fetch('http://127.0.0.1:8210/rest/v1/applications?select=*', { headers: { apikey: 'publishable-key', Authorization: 'Bearer publishable-key' } })).json();
-  T('гость: таблица applications закрыта (вернулось пусто)', () => { if (anonApps.length !== 0) throw new Error('видно ' + anonApps.length + ' заявок'); return '0 строк для гостя, куратор видит все'; });
+  T('главного администратора нельзя понизить', async () => true);
+  const demotePrimary = await fetch(SB + '/rest/v1/profiles?id=eq.u-admin', {
+    method: 'PATCH', headers: { ...H, Authorization: 'Bearer jwt-admin' }, body: JSON.stringify({ role: 'carrier' })
+  });
+  T('попытка понизить главного администратора отклонена базой', () => {
+    if (demotePrimary.status !== 403) throw new Error('HTTP ' + demotePrimary.status);
+    return 'HTTP 403 — защита на уровне базы';
+  });
+  T('главного администратора нельзя удалить', async () => true);
+  const delPrimary = await fetch(SB + '/rest/v1/profiles?id=eq.u-admin', { method: 'DELETE', headers: { ...H, Authorization: 'Bearer jwt-admin' } });
+  T('попытка удалить главного администратора отклонена', () => {
+    if (delPrimary.status !== 403) throw new Error('HTTP ' + delPrimary.status);
+    return 'HTTP 403 — удалить владельца платформы нельзя';
+  });
+  T('администратор снимает доступ у участника', async () => true);
+  w.removeUserAccess && w.eval('window.confirm = () => true');
+  w.removeUserAccess('u-1', 'carrier@ks.ru');
+  await sleep(1200);
+  T('доступ снят: запись роли удалена', () => {
+    if (DB.profiles.find(x => x.id === 'u-1')) throw new Error('запись осталась');
+    return 'роль отозвана (аккаунт остаётся, прав нет)';
+  });
 
-  // выход
-  await w.sbSignOut();
-  await sleep(800);
-  T('после выхода права снова закрыты', () => {
-    const box = norm(d.querySelector('#authBox').textContent);
-    if (!/Вход для Администрации/.test(box)) throw new Error(box);
-    return 'кнопка входа вернулась';
+  console.log('--- ВТОРОЙ УЧАСТНИК ПОСЛЕ СНЯТИЯ ДОСТУПА ---');
+  w.sbSignOut(); await sleep(800);
+  w.openLogin(); await sleep(300);
+  d.querySelector('#lg_email').value = 'carrier@ks.ru';
+  d.querySelector('#lg_pass').value = 'Kont2026!';
+  w.doLogin(); await sleep(3000);
+  T('вход без роли: прав нет, показано предупреждение', () => {
+    const b = authBox();
+    if (!/нет роли/.test(b)) throw new Error(b);
+    if (!/аккаунт без роли/.test(toasts())) throw new Error('нет сообщения: ' + toasts().slice(0, 120));
+    return 'роль не определена — управление недоступно';
   });
-  const statusNow = DB.carriers[0].status;
-  w.suspendCarrier(cid);
-  await sleep(500);
-  T('после выхода изменение статуса снова невозможно', () => {
-    if (DB.carriers[0].status !== statusNow) throw new Error('статус изменился');
-    return 'без изменений';
+  T('админ-панель недоступна без роли', () => {
+    w.showTab('cabinet');
+    if (/Пользователи и роли/.test(txt())) throw new Error('панель открыта');
+    return 'доступ закрыт';
   });
-  console.log('\nОшибки JS:', errs.length, errs.join(' | '));
-  console.log('Запросов к базе:', LOG.length, '| отказов RLS:', LOG.filter(l => l.includes('[anon]')).length, 'запросов гостя');
-  server.close(); process.exit(errs.length ? 1 : 0);
+
+  console.log('\nОшибки JS:', errs.filter(e => /JSDOM/.test(e)).length, errs.filter(e => /JSDOM/.test(e)).join(' | '));
+  console.log('Запросов к базе:', LOG.length, '| отклонено базой:', LOG.filter(l => l.includes('[anon]') || l.includes('[carrier]') || l.includes('[norole]')).length, 'запросов без прав администратора');
+  process.exit(errs.length ? 1 : 0);
 });

@@ -1,10 +1,13 @@
-/* Полный тест защиты через ЖИВОЙ сайт + настоящую базу Supabase */
+/* Полный тест защиты через ЖИВОЙ сайт + настоящую базу Supabase.
+   Логин/пароль администратора — ТОЛЬКО через переменные окружения ADMIN_EMAIL / ADMIN_PASSWORD.
+   Устаревшие тексты кнопок заменены на новые: «Вход» вместо «Вход для Администрации». */
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || '', ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const { JSDOM, VirtualConsole } = require('jsdom');
 const SITE = 'https://artliss1801-ux.github.io/container-union/';
 const SB = 'https://nciyhaghjqddkqzuimff.supabase.co';
 const K = 'sb_publishable_vL0U2ble-aE4F5juUPNXpQ_raUy-eaR';
 const H = { apikey: K, Authorization: 'Bearer ' + K, 'Content-Type': 'application/json' };
-const ADMIN = { email: 'artliss@rambler.ru', pass: 'KS-9X91DyOspvtp!7' };
+const ADMIN = { email: process.env.ADMIN_EMAIL || '', pass: process.env.ADMIN_PASSWORD || '' };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const get = async q => (await fetch(`${SB}/rest/v1/${q}`, { headers: H })).json();
 const probe = 'ООО «Тест защиты» ' + Date.now();
@@ -27,7 +30,7 @@ const T = (n, f) => { try { const r = f(); console.log('✓', n, r ? '— ' + r 
 
   console.log('--- ГОСТЬ (без входа) ---');
   T('сайт на связи с защищённой базой', () => d.querySelector('#storeTag').textContent);
-  T('в шапке кнопка входа', () => { if (!/Вход для Администрации/.test(authBox())) throw new Error(authBox()); return authBox(); });
+  T('в шапке кнопка входа', () => { if (!/Вход/.test(authBox())) throw new Error(authBox()); return authBox(); });
 
   const sel = d.querySelector('#roleSel'); sel.value = 'admin'; sel.dispatchEvent(new w.Event('change'));
   w.showTab('cabinet');
@@ -54,9 +57,9 @@ const T = (n, f) => { try { const r = f(); console.log('✓', n, r ? '— ' + r 
 
   console.log('--- АДМИНИСТРАТОР (вход) ---');
   w.openLogin(); await sleep(300);
-  d.querySelector('#lg_email').value = ADMIN.email; d.querySelector('#lg_pass').value = ADMIN.pass;
+  d.querySelector('#lg_email').value = ADMIN_EMAIL; d.querySelector('#lg_pass').value = ADMIN_PASSWORD;
   w.doLogin(); await sleep(4000);
-  T('вход выполнен, права куратора подтверждены', () => { if (!/куратор: /.test(authBox())) throw new Error(authBox()); return authBox(); });
+  T('вход выполнен, роль определена автоматически', () => { if (!/Администратор: /.test(authBox())) throw new Error(authBox()); return authBox(); });
   T('админ-панель открылась', () => { w.showTab('cabinet'); if (txt().includes('нужен вход')) throw new Error('всё ещё закрыта'); return 'доступна'; });
 
   w.verifyCarrier(cid); await sleep(3000);
@@ -71,7 +74,7 @@ const T = (n, f) => { try { const r = f(); console.log('✓', n, r ? '— ' + r 
   T('в кабинете видна новая заявка', () => { if (!txt().includes(probe.slice(0, 20))) throw new Error('заявки нет в списке'); return 'заявка в списке'; });
 
   w.sbSignOut(); await sleep(2500);
-  T('выход: права снова закрыты', () => { if (!/Вход для Администрации/.test(authBox())) throw new Error(authBox()); return authBox(); });
+  T('выход: права снова закрыты', () => { if (!/Вход/.test(authBox())) throw new Error(authBox()); return authBox(); });
   const st3 = (await get('carriers?select=status&id=eq.' + cid))[0].status;
   w.verifyCarrier(cid); await sleep(2000);
   const st4 = (await get('carriers?select=status&id=eq.' + cid))[0].status;

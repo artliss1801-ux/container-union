@@ -13,10 +13,12 @@ const AUTH = {
   clear() { AUTH.session = null; try { localStorage.removeItem('ks_session'); } catch (e) { } },
   get token() { return AUTH.session && AUTH.session.access_token; },
   get email() { return (AUTH.session && AUTH.session.user && AUTH.session.user.email) || ''; },
-  get name() { return AUTH.email || 'куратор'; }
+  get userId() { return (AUTH.session && AUTH.session.user && AUTH.session.user.id) || ''; },
+  get name() { return AUTH.email || 'участник'; }
 };
 AUTH.load();
-const CURATOR = { checked: false, ok: false };
+/* Роль участника определяется данными базы: кто как зарегистрировался или кем назначен администратором */
+const PROFILE = { checked: false, ok: false, id: '', email: '', role: '', isPrimary: false };
 
 /* Заголовки запросов: apikey — публикуемый ключ проекта, Authorization — вход куратора, если он выполнен */
 const sbHead = () => ({ 'apikey': CFG.supabaseAnonKey, 'Authorization': 'Bearer ' + (AUTH.token || CFG.supabaseAnonKey), 'Content-Type': 'application/json' });
@@ -48,18 +50,23 @@ const SB = {
     const r = await fetch(SBBASE + t + '?' + q, { method: 'PATCH', headers: { ...sbHead(), 'Prefer': 'return=minimal' }, body: JSON.stringify(row) });
     if (!r.ok) throw new Error(t + ' → HTTP ' + r.status);
     return true;
+  },
+  async del(t, q) {
+    const r = await fetch(SBBASE + t + '?' + q, { method: 'DELETE', headers: { ...sbHead(), 'Prefer': 'return=minimal' } });
+    if (!r.ok) throw new Error(t + ' → HTTP ' + r.status);
+    return true;
   }
 };
 
 /* ---------- преобразование записей «база ↔ приложение» ---------- */
-const sbCarrier    = c => ({ id: c.id, name: c.name, form: c.form, inn: c.inn, city: c.city, region: c.region, fleet: c.fleet || 0, containers: c.containers || 0, types: c.types || [], status: c.status, joined: c.joined, docs: c.docs || {}, metrics: c.metrics || {}, demo: !!c.demo });
-const dbCarrier    = r => ({ id: r.id, name: r.name, form: r.form, inn: r.inn, city: r.city, region: r.region, fleet: r.fleet || 0, containers: r.containers || 0, types: r.types || [], status: r.status, joined: r.joined, docs: r.docs || {}, metrics: r.metrics || {}, demo: !!r.demo });
+const sbCarrier    = c => ({ id: c.id, name: c.name, form: c.form, inn: c.inn, city: c.city, region: c.region, fleet: c.fleet || 0, containers: c.containers || 0, types: c.types || [], status: c.status, joined: c.joined, docs: c.docs || {}, metrics: c.metrics || {}, demo: !!c.demo, owner: c.owner || null });
+const dbCarrier    = r => ({ id: r.id, name: r.name, form: r.form, inn: r.inn, city: r.city, region: r.region, fleet: r.fleet || 0, containers: r.containers || 0, types: r.types || [], status: r.status, joined: r.joined, docs: r.docs || {}, metrics: r.metrics || {}, demo: !!r.demo, owner: r.owner || null });
 const sbApplication = a => ({ id: a.id, name: a.name, city: a.city, inn: a.inn, fleet: a.fleet || 0, containers: a.containers || 0, submitted: a.submitted, status: a.status, docs: !!a.docs });
 const dbApplication = r => ({ id: r.id, name: r.name, city: r.city, inn: r.inn, fleet: r.fleet, containers: r.containers, submitted: r.submitted, status: r.status, docs: r.docs });
 const sbLoad       = l => ({ id: l.id, from_city: l.from, to_city: l.to, type: l.type, cargo: l.cargo, weight: l.weight, pickup: l.date, shipper: l.shipper, status: l.status, mode: l.mode, bids: l.bids || 0, floor: l.floor || 0, carrier_id: l.carrierId || null, rate: l.rate || null });
 const dbLoad       = r => ({ id: r.id, from: r.from_city, to: r.to_city, type: r.type, cargo: r.cargo, weight: r.weight, date: r.pickup, shipper: r.shipper, status: r.status, mode: r.mode, bids: r.bids || 0, floor: r.floor || 0, carrierId: r.carrier_id || undefined, rate: r.rate || undefined });
 const sbMember     = m => ({ id: m.id, name: m.name, company: m.company, city: m.city, district: m.district, committee: m.committee, until: m.until, elected_by: m.electedBy, chair: !!m.chair });
-const dbMember     = r => ({ id: r.id, name: r.name, company: r.company, city: r.city, district: r.district, committee: r.committee, until: r.until, electedBy: r.elected_by, chair: r.chair, role: r.chair ? 'Председатель Совета' : 'Член Совета' });
+const dbMember     = r => ({ id: r.id, name: r.name, company: r.company, city: r.city, district: r.district, committee: r.committee, until: r.until, electedBy: r.elected_by, chair: r.chair, userId: r.user_id || null, role: r.chair ? 'Председатель Совета' : 'Член Совета' });
 const sbVote       = v => ({ id: v.id, kind: v.kind, title: v.title, summary: v.summary, author: v.author, created: v.created, deadline: v.deadline, payload: v.payload || {}, status: v.status, result: v.result || null });
 const dbVote       = r => ({ id: r.id, kind: r.kind, title: r.title, summary: r.summary, author: r.author, created: r.created, deadline: r.deadline, payload: r.payload || {}, status: r.status, result: r.result || undefined, votes: {} });
 const sbDecision   = d => ({ id: d.id, title: d.title, kind: d.kind, at: d.at, result: d.result, effect: d.effect });
@@ -75,13 +82,13 @@ function sbSafe(promise) {
       if (/HTTP 401|HTTP 403/.test(msg) && !AUTH.token) {
         // Изменение отклонила сама база: у гостя нет прав на запись.
         console.warn('[Контейнерный Союз/Supabase] доступ отклонён:', msg);
-        toast('База отклонила изменение: для этого действия нужен вход куратора. Нажмите «Вход» в шапке.', 'bad');
+        toast('База отклонила изменение: это действие администратора платформы. Нажмите «Вход» в шапке.', 'bad');
         openLogin();
         return false;
       }
       if (/HTTP 401|HTTP 403/.test(msg)) {
-        toast('База отклонила изменение: у аккаунта <b>' + esc(AUTH.name) + '</b> нет прав куратора (нет записи в таблице curators).', 'bad');
-        CURATOR.ok = false; renderAuthBox();
+        toast('База отклонила изменение: у аккаунта <b>' + esc(AUTH.name) + '</b> роль «' + esc(roleName() || 'без роли') + '» — прав на это действие нет.', 'bad');
+        PROFILE.ok = false; renderAuthBox();
         return false;
       }
       SB_STATE = 'error'; sbBadge();
@@ -106,7 +113,7 @@ function sbJournal(text) { if (ONLINE) sbSafe(SB.upsert('journal', [{ at: todayI
 /* ---------- чтение всей базы ---------- */
 async function sbLoadAll(quiet) {
   SB_STATE = 'connecting'; sbBadge();
-  const [tar, car, app, loa, mem, vot, bal, dec, jou, set] = await Promise.all([
+  const [tar, car, app, loa, mem, vot, bal, dec, jou, set, prf] = await Promise.all([
     SB.select('tariff', 'select=*&id=eq.1'),
     SB.select('carriers', 'select=*&order=fleet.desc'),
     SB.select('applications', 'select=*&order=submitted.desc'),
@@ -116,7 +123,8 @@ async function sbLoadAll(quiet) {
     SB.select('vote_ballots', 'select=*'),
     SB.select('decisions', 'select=*&order=at.desc'),
     SB.selectOpt('journal', 'select=*&order=created_at.desc&limit=50'),
-    SB.selectOpt('settings', 'select=*')
+    SB.selectOpt('settings', 'select=*'),
+    SB.selectOpt('profiles', 'select=id,email,role,is_primary,created_at&order=created_at.desc')
   ]);
   // Демонстрационные вопросы и записи реестра держим отдельно — они нужны только
   // для «учебного режима» и всегда помечены как примеры.
@@ -132,6 +140,7 @@ async function sbLoadAll(quiet) {
   bal.forEach(b => { const v = DB.votes.find(x => x.id === b.vote_id); if (v) v.votes[b.member_id] = b.choice; });
   DB.decisions = dec.map(dbDecision).concat(demoDecisions);
   DB.log = jou.map(j => ({ at: j.at, text: j.text }));
+  DB.profiles = Array.isArray(prf) ? prf : [];   // участники и их роли — видит только администратор
   if (set.length) { DB.settings = DB.settings || {}; set.forEach(s => { DB.settings[s.key === 'council' ? 'demoCouncil' : s.key] = (s.val && typeof s.val === 'object' && 'demoCouncil' in s.val) ? s.val.demoCouncil : s.val; if (s.key === 'council' && s.val) DB.settings = { ...s.val, demoCouncil: !!s.val.demoCouncil }; }); }
   SB_STATE = 'ok'; sbBadge(); save(); render();
   if (!quiet) toast('Данные загружены из базы: ' + DB.carriers.length + ' перевозчиков, ' + DB.loads.length + ' заявок, ' + DB.votes.length + ' вопросов Совета', 'ok');
@@ -165,11 +174,48 @@ function sbPushTariff() {
 }
 
 /* ============================================================
-   Вход куратора (Администрация платформы и члены Совета)
-   Пароль вводится в браузере участника и в файлах не хранится.
+   Вход и роли участников
+   Роль определяется автоматически — по тому, как участник зарегистрировался:
+     • регистрация на сайте («Кабинет»)      → Перевозчик;
+     • назначение администратором платформы  → Член Совета или Администратор.
+   Администратор — только владелец платформы; он же назначает и снимает остальных.
    ============================================================ */
 const sbAuthUrl = p => String(CFG.supabaseUrl || '').replace(/\/+$/, '') + '/auth/v1/' + p;
+const ROLE_NAME = { admin: 'Администратор', council: 'Член Совета', carrier: 'Перевозчик', guest: 'Гость' };
+function roleName() { return ROLE_NAME[ROLE] || 'Гость'; }
+window.roleName = roleName;
 
+/* Роль и привязки: кто перевозчик (по владельцу карточки), кто член Совета (по месту в Совете) */
+function applyRole() {
+  if (!ONLINE) { renderAuthBox(); return; }
+  if (!AUTH.token || !PROFILE.ok) { ROLE = 'guest'; ME = null; VOTE_AS = null; Store.set('ks_role', ROLE); renderAuthBox(); return; }
+  ROLE = PROFILE.role === 'admin' ? 'admin' : PROFILE.role === 'council' ? 'council' : 'carrier';
+  Store.set('ks_role', ROLE);
+  ME = (DB.carriers.find(c => c.owner && c.owner === PROFILE.id) || {}).id || null;
+  const m = (DB.members || []).find(x => x.userId && x.userId === PROFILE.id);
+  VOTE_AS = m ? m.id : null;
+  renderAuthBox();
+}
+window.applyRole = applyRole;
+
+/* Свой профиль: роль хранится в таблице profiles, участник видит только свою строку */
+async function sbLoadProfile() {
+  PROFILE.checked = true; PROFILE.ok = false;
+  if (!ONLINE || !AUTH.token || !AUTH.userId) { PROFILE.role = ''; renderAuthBox(); return false; }
+  try {
+    const r = await fetch(SBBASE + 'profiles?select=id,email,role,is_primary&id=eq.' + encodeURIComponent(AUTH.userId), { headers: sbHead() });
+    const d = await r.json();
+    if (Array.isArray(d) && d.length) {
+      PROFILE.ok = true; PROFILE.id = d[0].id; PROFILE.email = d[0].email || AUTH.email;
+      PROFILE.role = d[0].role; PROFILE.isPrimary = !!d[0].is_primary;
+    }
+  } catch (e) { PROFILE.ok = false; }
+  renderAuthBox();
+  return PROFILE.ok;
+}
+window.sbLoadProfile = sbLoadProfile;
+
+/* Вход */
 async function sbSignIn(email, password) {
   const r = await fetch(sbAuthUrl('token?grant_type=password'), {
     method: 'POST', headers: { 'apikey': CFG.supabaseAnonKey, 'Content-Type': 'application/json' },
@@ -178,10 +224,27 @@ async function sbSignIn(email, password) {
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(d.error_description || d.msg || d.message || ('HTTP ' + r.status));
   AUTH.save({ access_token: d.access_token, refresh_token: d.refresh_token, expires_at: Date.now() + (d.expires_in || 3600) * 1000, user: d.user });
-  await sbCheckCurator();
-  renderAuthBox();
+  await sbLoadProfile();
+  await sbLoadAll(true);
+  applyRole(); render();
   return d.user || {};
 }
+
+/* Регистрация перевозчика: создаётся аккаунт, роль «перевозчик» присваивает сама база */
+async function sbSignUp(email, password) {
+  const r = await fetch(sbAuthUrl('signup'), {
+    method: 'POST', headers: { 'apikey': CFG.supabaseAnonKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: String(email).trim(), password: password })
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error_description || d.msg || d.message || ('HTTP ' + r.status));
+  if (!d.access_token) throw new Error('аккаунт создан, но вход не выполнен — попробуйте войти кнопкой «Вход»');
+  AUTH.save({ access_token: d.access_token, refresh_token: d.refresh_token, expires_at: Date.now() + (d.expires_in || 3600) * 1000, user: d.user });
+  await sbLoadProfile();
+  return d.user || {};
+}
+window.sbSignUp = sbSignUp;
+
 async function sbAuthRefresh() {
   if (!AUTH.session || !AUTH.session.refresh_token) return false;
   try {
@@ -199,40 +262,78 @@ async function sbSignOut() {
   try {
     if (AUTH.token) await fetch(sbAuthUrl('logout'), { method: 'POST', headers: { 'apikey': CFG.supabaseAnonKey, 'Authorization': 'Bearer ' + AUTH.token } });
   } catch (e) { }
-  AUTH.clear(); CURATOR.checked = false; CURATOR.ok = false;
+  AUTH.clear(); PROFILE.checked = false; PROFILE.ok = false; PROFILE.role = ''; PROFILE.id = '';
+  ROLE = 'guest'; ME = null; VOTE_AS = null; Store.set('ks_role', ROLE);
   renderAuthBox(); render();
-  toast('Вы вышли. Действия Администрации снова недоступны.', 'ok');
+  toast('Вы вышли из аккаунта', 'ok');
 }
-/* Проверка, что вошедший действительно в списке кураторов (таблица curators закрыта правилами доступа) */
-async function sbCheckCurator() {
-  CURATOR.checked = true; CURATOR.ok = false;
-  if (!AUTH.token) return false;
-  try {
-    const r = await fetch(SBBASE + 'curators?select=user_id', { headers: sbHead() });
-    const d = await r.json();
-    CURATOR.ok = Array.isArray(d) && d.length > 0;
-  } catch (e) { CURATOR.ok = false; }
-  renderAuthBox();
-  return CURATOR.ok;
-}
-/* Разрешение на действия Администрации: локальный режим — свободно, онлайн — только после входа куратора */
-function needCurator(what) {
+window.sbSignOut = sbSignOut;
+
+/* Разрешения: управление платформой — только администратор, голосование — члены Совета */
+function needAdmin(what) {
   if (!ONLINE) return true;
-  if (AUTH.token) return true;
-  toast('Действие «' + (what || 'действие Администрации') + '» доступно только куратору. Нажмите «Вход» в шапке.', 'bad');
-  openLogin();
+  if (PROFILE.ok && PROFILE.role === 'admin') return true;
+  toast('Действие «' + (what || 'действие Администрации') + '» доступно только администратору платформы.' + (AUTH.token ? '' : ' Нажмите «Вход» в шапке.'), 'bad');
+  if (!AUTH.token) openLogin();
   return false;
 }
+function needMember(what) {
+  if (!ONLINE) return true;
+  if (PROFILE.ok && (PROFILE.role === 'admin' || PROFILE.role === 'council')) return true;
+  toast('Действие «' + (what || 'действие Совета') + '» доступно членам Совета перевозчиков.' + (AUTH.token ? '' : ' Нажмите «Вход» в шапке.'), 'bad');
+  if (!AUTH.token) openLogin();
+  return false;
+}
+const needCurator = needAdmin;   // прежнее имя — для совместимости
+window.needAdmin = needAdmin; window.needMember = needMember; window.needCurator = needCurator;
+
+/* Демонстрационный вход — только в локальном режиме (без базы), чтобы можно было осмотреть разделы */
+function demoEnter(role) {
+  if (ONLINE) return;
+  ROLE = role || 'guest'; Store.set('ks_role', ROLE);
+  if (ROLE === 'carrier') { if (!ME) { ME = 'C-101'; Store.set('ks_me', ME); } }
+  if (ROLE === 'council') VOTE_AS = 'M-1';
+  if (ROLE === 'guest') { ME = null; VOTE_AS = null; }
+  closeModal(); render();
+  toast('Демонстрационный режим: роль «<b>' + (ROLE_NAME[ROLE] || 'Гость') + '</b>». В онлайн-версии роль присваивается автоматически.', 'ok');
+}
+window.demoEnter = demoEnter;
+
 function openLogin() {
-  if (!ONLINE) { toast('Локальный демо-режим: вход не нужен, все функции доступны.', 'ok'); return; }
-  openModal('Вход для Администрации и Совета', `
-    <div class="note">Вход нужен только для действий Администрации: верификация перевозчиков, утверждение тарифа, назначение и публикация выборов Совета. Обычным участникам вход не требуется — регистрация, заявки и ставки работают без него.</div>
-    <div class="grid g2" style="margin-top:12px">
-      <div class="field"><label>E-mail куратора</label><input type="email" id="lg_email" value="${esc(AUTH.email)}" autocomplete="username"></div>
-      <div class="field"><label>Пароль</label><input type="password" id="lg_pass" autocomplete="current-password"></div>
+  if (!ONLINE) {
+    openModal('Демонстрационный вход', `
+      <div class="note">Платформа открыта в локальном режиме (без базы): здесь можно посмотреть каждый раздел
+      от лица разных участников. В онлайн-версии роль присваивается автоматически — по регистрации или назначению
+      администратором, и никакого переключателя нет.</div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn" onclick="demoEnter('guest')">Войти как гость</button>
+        <button class="btn pri" onclick="demoEnter('carrier')">Войти как перевозчик</button>
+        <button class="btn" onclick="demoEnter('council')">Войти как член Совета</button>
+        <button class="btn" onclick="demoEnter('admin')">Войти как администратор</button>
+      </div>`, '<button class="btn" onclick="closeModal()">Закрыть</button>');
+    return;
+  }
+  openModal('Вход на платформу', `
+    <div class="grid g2">
+      <div>
+        <h3>Вход</h3>
+        <div class="mini" style="margin-bottom:10px">Войдите, если у вас уже есть аккаунт: перевозчик, член Совета или администратор платформы.</div>
+        <div class="field"><label>E-mail</label><input type="email" id="lg_email" value="${esc(AUTH.email)}" autocomplete="username"></div>
+        <div class="field"><label>Пароль</label><input type="password" id="lg_pass" autocomplete="current-password"></div>
+        <button class="btn pri" onclick="doLogin()">Войти</button>
+        <div class="fnote">Забыли пароль? Напишите администратору платформы — он сменит пароль вашего аккаунта.</div>
+      </div>
+      <div>
+        <h3>Ещё нет аккаунта?</h3>
+        <div class="mini" style="margin-bottom:10px">Перевозчики регистрируются сами — вместе с заявкой создаётся личный кабинет,
+        и роль «Перевозчик» присваивается автоматически.</div>
+        <button class="btn" onclick="closeModal();showTab('cabinet')">Перейти к регистрации перевозчика</button>
+        <div class="fnote">Администраторов и членов Совета назначает администратор платформы — регистрация им не нужна.</div>
+      </div>
     </div>
-    <div class="mini">Аккаунт создаётся в Supabase: Authentication → Users → Add user. Права выдаются записью в таблице <b>curators</b> (инструкция — в файле supabase/security.sql).</div>
-  `, '<button class="btn pri" onclick="doLogin()">Войти</button><button class="btn" onclick="closeModal()">Отмена</button>');
+    <div class="mini" style="margin-top:14px">Роль участника платформа определяет по базе: кто зарегистрировался перевозчиком — перевозчик,
+    кого назначил администратор — член Совета или администратор. Переключателя ролей нет.</div>
+  `, '<button class="btn" onclick="closeModal()">Закрыть</button>');
   setTimeout(() => { const el = $('#lg_pass'); if (el) el.focus(); }, 60);
 }
 async function doLogin() {
@@ -241,21 +342,68 @@ async function doLogin() {
   try {
     const u = await sbSignIn(e, p);
     closeModal();
-    const rights = CURATOR.ok ? 'права куратора подтверждены' : 'вход выполнен, но записи в таблице curators нет — права не выданы';
-    toast('Вход выполнен: <b>' + esc(u.email || e) + '</b> — ' + rights, CURATOR.ok ? 'ok' : 'bad');
-    sbSafe(sbLoadAll(true));
+    const rights = PROFILE.ok
+      ? 'роль: <b>' + roleName() + '</b>'
+      : 'аккаунт без роли — обратитесь к администратору платформы';
+    toast('Вход выполнен: <b>' + esc(u.email || e) + '</b> — ' + rights, PROFILE.ok ? 'ok' : 'bad');
     render();
   } catch (err) { toast('Не удалось войти: ' + esc(err.message), 'bad'); }
 }
 function renderAuthBox() {
   const el = $('#authBox'); if (!el) return;
-  if (!ONLINE) { el.innerHTML = '<span class="tag">локальный демо-режим</span>'; return; }
-  if (!AUTH.token) { el.innerHTML = '<button class="btn sm" onclick="openLogin()">Вход для Администрации</button>'; return; }
-  el.innerHTML = '<span class="tag badge ' + (CURATOR.ok ? 'b-ok' : 'b-warn') + '" title="' + (CURATOR.ok ? 'Права куратора подтверждены' : 'Нет записи в таблице curators') + '">' +
-    (CURATOR.ok ? 'куратор: ' : 'вошли: ') + esc(AUTH.name) + '</span> <button class="btn sm" onclick="sbSignOut()">Выйти</button>';
+  if (!ONLINE) {
+    el.innerHTML = '<span class="tag">локальный демо-режим</span> <button class="btn sm" onclick="openLogin()">Демо-вход</button>';
+    return;
+  }
+  if (!AUTH.token) {
+    el.innerHTML = '<button class="btn sm pri" onclick="openLogin()">Вход</button>' +
+      ' <button class="btn sm" onclick="showTab(\'cabinet\')">Регистрация</button>';
+    return;
+  }
+  const role = PROFILE.ok ? roleName() : 'нет роли';
+  const cls = !PROFILE.ok ? 'b-warn' : PROFILE.role === 'admin' ? 'b-gold' : PROFILE.role === 'council' ? 'b-info' : 'b-ok';
+  const title = PROFILE.ok ? ('Роль определена автоматически: ' + role) : 'У аккаунта нет роли в таблице profiles';
+  el.innerHTML = '<span class="tag badge ' + cls + '" title="' + title + '">' + esc(role) + ': ' + esc(PROFILE.email || AUTH.email) + '</span>' +
+    ' <button class="btn sm" onclick="sbSignOut()">Выйти</button>';
 }
-[openLogin, doLogin, sbSignOut].forEach(f => window[f.name] = f);
+[openLogin, doLogin, sbSignOut, sbSignIn].forEach(f => window[f.name] = f);
 window.renderAuthBox = renderAuthBox;
+
+/* ============================================================
+   Управление ролями (доступно только администратору)
+   ============================================================ */
+async function refreshProfiles() {
+  try {
+    const d = await SB.select('profiles', 'select=id,email,role,is_primary,created_at&order=created_at.desc');
+    DB.profiles = Array.isArray(d) ? d : [];
+  } catch (e) { DB.profiles = DB.profiles || []; }
+  return DB.profiles;
+}
+async function setUserRole(id, role, email) {
+  if (!needAdmin('изменение роли участника')) return;
+  if (!['carrier', 'council', 'admin'].includes(role)) { toast('Неизвестная роль', 'bad'); return; }
+  try {
+    await SB.patch('profiles', 'id=eq.' + encodeURIComponent(id), { role: role });
+    await refreshProfiles();
+    render();
+    toast((email || 'Участник') + ': роль изменена на «' + (ROLE_NAME[role] || role) + '»', 'ok');
+  } catch (e) {
+    toast('Не удалось изменить роль: ' + esc(String(e.message || e)), 'bad');
+  }
+}
+async function removeUserAccess(id, email) {
+  if (!needAdmin('снятие доступа участника')) return;
+  if (!confirm('Снять доступ участника ' + (email || '') + '?\n\nАккаунт останется, но роль и права будут отозваны: участник не сможет управлять платформой. Если нужно, удалите аккаунт отдельно в Supabase → Authentication → Users.')) return;
+  try {
+    await SB.del('profiles', 'id=eq.' + encodeURIComponent(id));
+    await refreshProfiles();
+    render();
+    toast((email || 'Участник') + ': доступ снят (роль отозвана)', 'bad');
+  } catch (e) {
+    toast('Не удалось снять доступ: ' + esc(String(e.message || e)), 'bad');
+  }
+}
+window.refreshProfiles = refreshProfiles; window.setUserRole = setUserRole; window.removeUserAccess = removeUserAccess;
 
 /* ---------- запуск ---------- */
 if (ONLINE) {
@@ -263,10 +411,18 @@ if (ONLINE) {
   renderAuthBox();
   (async () => {
     if (AUTH.session && (!AUTH.session.expires_at || AUTH.session.expires_at - Date.now() < 120000)) await sbAuthRefresh();
-    await sbCheckCurator();
-    sbLoadAll(true).catch(e => { SB_STATE = 'error'; sbBadge(); toast('База недоступна, работаем в локальном режиме. ' + e.message, 'bad'); });
+    await sbLoadProfile();
+    try {
+      await sbLoadAll(true);
+    } catch (e) { SB_STATE = 'error'; sbBadge(); toast('База недоступна, работаем в локальном режиме. ' + e.message, 'bad'); }
+    applyRole();
   })();
 } else {
+  /* Локальный демо-режим без базы: роль выбирается в окне «Демо-вход» */
   sbBadge();
-  renderAuthBox();
+  if (!['guest', 'carrier', 'council', 'admin'].includes(ROLE)) ROLE = 'guest';
+  if (ROLE === 'carrier' && !ME) { ME = 'C-101'; Store.set('ks_me', ME); }
+  if (ROLE === 'council') VOTE_AS = 'M-1';
+  renderAuthBox();   /* подпись хранилища ставит sbBadge() */
+  render();
 }

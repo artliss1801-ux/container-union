@@ -1,4 +1,5 @@
-/* Проверка: записи куратора в закрытую базу проходят (тариф, настройки) */
+/* Проверка: записи администратора в закрытую базу проходят (тариф, настройки).
+   Логин/пароль — только через переменные окружения ADMIN_EMAIL / ADMIN_PASSWORD. */
 const { JSDOM, VirtualConsole } = require('jsdom');
 const SITE = 'https://artliss1801-ux.github.io/container-union/';
 const SB = 'https://nciyhaghjqddkqzuimff.supabase.co';
@@ -25,10 +26,10 @@ const T = (n, f) => { try { const r = f(); console.log('✓', n, r ? '— ' + r 
   for (let i = 0; i < 40; i++) { await sleep(500); if (w.eval('SB_STATE') === 'ok') break; }
 
   w.openLogin(); await sleep(300);
-  d.querySelector('#lg_email').value = 'artliss@rambler.ru';
-  d.querySelector('#lg_pass').value = 'KS-9X91DyOspvtp!7';
+  d.querySelector('#lg_email').value = process.env.ADMIN_EMAIL || '';
+  d.querySelector('#lg_pass').value = process.env.ADMIN_PASSWORD || '';
   w.doLogin(); await sleep(4000);
-  T('вход куратора', () => { const b = d.querySelector('#authBox').textContent.replace(/[\u00a0\u202f]/g, ' ').trim(); if (!/куратор/.test(b)) throw new Error(b); return b; });
+  T('вход администратора', () => { const b = d.querySelector('#authBox').textContent.replace(/[\u00a0\u202f]/g, ' ').trim(); if (!/куратор/.test(b)) throw new Error(b); return b; });
 
   T('тариф сохранён куратором (запись в закрытую базу)', () => { if (!w.eval('typeof sbPushTariff === "function"')) throw new Error('нет функции'); return 'функция есть'; });
   w.eval('sbPushTariff()'); await sleep(3000);
