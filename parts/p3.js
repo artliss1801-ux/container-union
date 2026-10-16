@@ -653,28 +653,34 @@ function loadCreate() {
 /* ============================================================
    ЖИВОЙ ИНТЕРФЕЙС: лента событий, свайпы, горячие клавиши, отклик
    ============================================================ */
-/* ---------- лента событий платформы (под вкладками) ---------- */
-function renderTicker() {
-  const el = $('#tickerIn'); if (!el || !DB || !DB.tariff) return;
-  const t = DB.tariff.val;
-  const real = DB.carriers.filter(c => !c.demo).length;
-  const verified = DB.carriers.filter(c => !c.demo && c.status === 'verified').length;
-  const need = (DB.settings && DB.settings.electionThreshold) || 50;
-  const openVotes = DB.votes.filter(v => v.status === 'voting' && !v.demo).length;
-  const openLoads = DB.loads.filter(l => l.status === 'open').length;
-  const elections = DB.settings && DB.settings.elections;
-  const items = [
-    'Тарифная сетка <b>' + esc(DB.tariff.version) + '</b>: ДТ <b>' + fmt2(t.fuelPrice) + ' ₽/л</b>, «Платон» <b>' + fmt2(t.platon) + ' ₽/км</b>, рыночный ориентир <b>' + fmt2(t.marketPerKm) + ' ₽/км</b>',
-    'Реестр: реальных перевозчиков <b>' + real + '</b>' + (verified ? ', верифицировано <span class="t-ok">' + verified + '</span>' : '') + ' · порог выборов Совета — <b>' + need + '</b>',
-    'Биржа: открытых заявок <b>' + openLoads + '</b> · вопросов Совета на голосовании <b>' + openVotes + '</b>',
-    elections ? 'Выборы Совета назначены — сроки во вкладке «Совет перевозчиков»' : 'Переходный период: тарифную сетку ведёт Администрация, проекты решений — в открытых обсуждениях',
-    'Логотип КС: наведите курсор — из букв развернётся «Контейнерный Союз»',
-    'Подсказка: вкладки переключаются клавишами ← и →, на телефоне — свайпом по экрану'
-  ];
-  const html = items.concat(items).map(x => '<span>' + x + '</span>').join('');
-  if (el.innerHTML !== html) el.innerHTML = html;   /* не перезапускать прокрутку без нужды */
+/* ---------- строка показателей под шапкой ----------
+   Только актуальные цифры, без событий и подсказок; строка статичная, не бежит.
+   Источник значений: тарифная сетка платформы (ДТ, «Платон», рыночный ориентир) и
+   официальные курсы валют, которые ведёт Администрация (DB.settings.indicators). */
+function renderIndicators() {
+  const el = $('#indicIn'); if (!el || !DB || !DB.tariff) return;
+  const t = DB.tariff.val || {};
+  const ind = (DB.settings && DB.settings.indicators) || {};
+  const asOf = ind.asOf ? dt(ind.asOf) : '';
+  const src = ind.src || 'ЦБ РФ';
+  const rows = [
+    { l: 'ДТ', v: fmt2(t.fuelPrice) + ' ₽/л', s: 'Росстат, средняя по РФ', cls: '' },
+    { l: '«Платон»', v: fmt2(t.platon) + ' ₽/км', s: 'ПП РФ № 843', cls: '' },
+    { l: 'Рыночный ориентир', v: fmt2(t.marketPerKm) + ' ₽/км', s: DB.settings && DB.settings.demoCouncil ? 'ведёт Администрация (переходный период)' : 'решение Совета / Администрации', cls: '' },
+    num(ind.usd) ? { l: 'USD', v: fmt2(num(ind.usd)) + ' ₽', s: src, note: (src.split(' ')[0] || 'ЦБ') + (asOf ? ', ' + asOf : ''), cls: 'cur' } : null,
+    num(ind.cny) ? { l: 'CNY', v: fmt2(num(ind.cny)) + ' ₽', s: src, note: '', cls: 'cur' } : null,
+    num(ind.eur) ? { l: 'EUR', v: fmt2(num(ind.eur)) + ' ₽', s: src, note: '', cls: 'cur' } : null
+  ].filter(Boolean);
+  const html = rows.map(r =>
+    '<span class="i ' + r.cls + '" title="' + esc(r.s) + '">' + esc(r.l) + ' <b>' + r.v + '</b>' +
+    (r.note ? '<em>' + esc(r.note) + '</em>' : '') + '</span>').join('') +
+    '<span class="i src">сетка <b>' + esc(DB.tariff.version) + '</b>' +
+    (DB.tariff.approved ? ', утв. ' + dt(DB.tariff.approved) : '') +
+    (DB.tariff.approvedBy ? ' · ' + esc(DB.tariff.approvedBy) : '') + '</span>';
+  if (el.innerHTML !== html) el.innerHTML = html;
 }
-window.renderTicker = renderTicker;
+const renderTicker = renderIndicators;   // прежнее имя — для совместимости
+[renderIndicators, renderTicker].forEach(f => window[f.name] = f);
 
 /* ---------- появление карточек и подсказки в широких таблицах ---------- */
 let IO_REVEAL = null;

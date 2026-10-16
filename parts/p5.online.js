@@ -141,7 +141,15 @@ async function sbLoadAll(quiet) {
   DB.decisions = dec.map(dbDecision).concat(demoDecisions);
   DB.log = jou.map(j => ({ at: j.at, text: j.text }));
   DB.profiles = Array.isArray(prf) ? prf : [];   // участники и их роли — видит только администратор
-  if (set.length) { DB.settings = DB.settings || {}; set.forEach(s => { DB.settings[s.key === 'council' ? 'demoCouncil' : s.key] = (s.val && typeof s.val === 'object' && 'demoCouncil' in s.val) ? s.val.demoCouncil : s.val; if (s.key === 'council' && s.val) DB.settings = { ...s.val, demoCouncil: !!s.val.demoCouncil }; }); }
+  if (set.length) {
+    DB.settings = DB.settings || {};
+    set.forEach(r => {
+      if (r.key === 'council') { DB.settings = { ...(r.val || {}), demoCouncil: !!(r.val && r.val.demoCouncil) }; return; }
+      if (r.key === 'indicators') { DB.settings.indicators = Object.assign({}, DB.settings.indicators || {}, r.val || {}); return; }
+      DB.settings[r.key] = r.val;
+    });
+  }
+  if (window.renderIndicators) renderIndicators();   // строка показателей обновляется сразу после загрузки
   SB_STATE = 'ok'; sbBadge(); save(); render();
   if (!quiet) toast('Данные загружены из базы: ' + DB.carriers.length + ' перевозчиков, ' + DB.loads.length + ' заявок, ' + DB.votes.length + ' вопросов Совета', 'ok');
 }
@@ -166,7 +174,13 @@ function sbPushVote(v) {
 }
 function sbPushSettings() {
   if (!ONLINE) return;
-  sbSafe(SB.upsert('settings', [{ key: 'council', val: { demoCouncil: !!DB.settings.demoCouncil, electionThreshold: DB.settings.electionThreshold || 50, elections: DB.settings.elections || null } }], 'key'));
+  const rows = [{ key: 'council', val: { demoCouncil: !!DB.settings.demoCouncil, electionThreshold: DB.settings.electionThreshold || 50, elections: DB.settings.elections || null } }];
+  if (DB.settings.indicators) rows.push({ key: 'indicators', val: DB.settings.indicators });   // курсы и дата для строки показателей
+  sbSafe(SB.upsert('settings', rows, 'key'));
+}
+function sbPushDecisions() {
+  if (!ONLINE) return;
+  sbSafe(SB.upsert('decisions', DB.decisions.filter(d => !d.demo).slice(0, 20).map(sbDecision)));
 }
 function sbPushTariff() {
   if (!ONLINE) return;

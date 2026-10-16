@@ -57,10 +57,15 @@ const norm = x => String(x).replace(/[\u00a0\u202f]/g, ' ').replace(/\s+/g, ' ')
     if (!/Перевозчик/.test(t)) throw new Error('раздел не открылся');
     return /Реестр пуст|ожидает|заявку/i.test(t) ? 'раздел на месте, реестр пока пуст — приглашение подать заявку' : 'раздел на месте';
   });
-  await T('лента событий живая', () => {
-    const t = norm(d.querySelector('#tickerIn').textContent);
-    if (t.length < 20) throw new Error('лента пуста');
-    return t.slice(0, 80) + '…';
+  await T('строка показателей: статичная, только актуальные цифры', () => {
+    const strip = d.querySelector('#indicIn');
+    if (!strip) throw new Error('нет строки показателей');
+    const st = w.getComputedStyle(strip);
+    if (st.animationName && st.animationName !== 'none') throw new Error('строка анимируется: ' + st.animationName);
+    const t = norm(strip.textContent);
+    ['ДТ', '«Платон»', 'Рыночный ориентир', 'USD'].forEach(x => { if (!t.includes(x)) throw new Error('нет показателя ' + x); });
+    [/Реестр:/, /Биржа:/, /Подсказка/].forEach(rx => { if (rx.test(t)) throw new Error('в строке лишнее: ' + rx); });
+    return t.slice(0, 110) + '…';
   });
   await T('меню разделов выезжает по кнопке', () => {
     d.querySelector('#menuBtn').click();

@@ -782,6 +782,8 @@ function adminPanel() {
         <td style="text-align:right"><button class="btn sm ok" onclick="verifyCarrier('${c.id}')">Верифицировать</button> <button class="btn sm bad" onclick="suspendCarrier('${c.id}')">Отклонить</button></td></tr>`).join('') +
       '</tbody></table>' : '<p class="mini">Новых заявок нет.</p>'}
     <hr>
+    ${indicatorsPanel()}
+    <hr>
     ${rolesPanel()}
     <hr>
     <div class="row between">
@@ -824,6 +826,112 @@ function rolesPanel() {
     <div class="row" style="margin-top:10px"><button class="btn" onclick="refreshProfiles().then(render)">⟳ Обновить список</button></div>`;
 }
 window.rolesPanel = rolesPanel;
+
+/* ============================================================
+   ПОКАЗАТЕЛИ СТРОКИ ПОД ШАПКОЙ (ДТ, «Платон», ориентир, курсы)
+   Рыночный ориентир: после выборов Совета — решением Совета (голосование),
+   в переходный период — Администрацией по методике.
+   Курсы валют — справочная информация, её обновляет Администрация.
+   ============================================================ */
+function indicatorsPanel() {
+  const t = DB.tariff.val || {};
+  const ind = (DB.settings && DB.settings.indicators) || {};
+  const elected = !ONLINE ? false : (councilPhase() === 'elected' && !DB.settings.demoCouncil);
+  const last = DB.tariff.approvedBy || '—';
+  return `<h3>Показатели строки под шапкой</h3>
+    <div class="mini" style="margin-bottom:8px">В строке под шапкой видны только актуальные рыночные цифры — без событий и объявлений.
+    ДТ и «Платон» меняются вместе с тарифной сеткой (решения Совета, в переходный период — Администрация):
+    сейчас ДТ <b>${fmt2(t.fuelPrice)} ₽/л</b>, «Платон» <b>${fmt2(t.platon)} ₽/км</b>; основание сетки — ${esc(last)}.</div>
+    <div class="grid g2">
+      <div class="kpi" style="padding:12px">
+        <div class="l">Рыночный ориентир, ₽/км</div>
+        <div class="row" style="margin-top:6px">
+          <input id="ind_market" class="inp" style="max-width:110px" value="${fmt2(t.marketPerKm)}" inputmode="decimal">
+          <button class="btn sm pri" onclick="saveMarketBenchmark()">${elected ? 'Внести на голосование Совета' : 'Сохранить'}</button>
+        </div>
+        <div class="mini" style="margin-top:6px">${elected
+          ? 'Совет избран: ориентир меняется <b>решением Совета</b> — значение уйдёт на голосование и применится автоматически при наборе порога.'
+          : 'Совет ещё не избран: ориентир утверждает <b>Администрация</b> строго по методике (переходный период). Изменение попадёт в реестр решений и журнал.'}</div>
+      </div>
+      <div class="kpi" style="padding:12px">
+        <div class="l">Официальные курсы, ₽</div>
+        <div class="row" style="margin-top:6px">
+          <span class="mini">USD</span><input id="ind_usd" class="inp" style="max-width:100px" value="${ind.usd ? fmt2(ind.usd) : ''}" inputmode="decimal">
+          <span class="mini">CNY</span><input id="ind_cny" class="inp" style="max-width:100px" value="${ind.cny ? fmt2(ind.cny) : ''}" inputmode="decimal">
+          <span class="mini">EUR</span><input id="ind_eur" class="inp" style="max-width:100px" value="${ind.eur ? fmt2(ind.eur) : ''}" inputmode="decimal">
+        </div>
+        <div class="row" style="margin-top:6px">
+          <span class="mini">на дату</span><input id="ind_date" class="inp" type="date" style="max-width:170px" value="${ind.asOf || todayISO()}">
+          <span class="mini">источник</span><input id="ind_src" class="inp" style="max-width:130px" value="${esc(ind.src || 'ЦБ РФ')}">
+          <button class="btn sm" onclick="saveIndicators()">Сохранить курсы</button>
+        </div>
+        <div class="mini" style="margin-top:6px">Курсы — справочные: на расчёт ставки не влияют, но нужны для оценки валютных расходов (лизинг, терминалы, СВХ).</div>
+      </div>
+    </div>`;
+}
+window.indicatorsPanel = indicatorsPanel;
+
+function nextDecisionId(prefix) {
+  const digits = DB.decisions.concat(DB.votes).map(x => parseInt(String(x.id || '').replace(/\D+/g, '').slice(-2), 10) || 10);
+  return prefix + '-2026-' + String(Math.max(10, ...digits) + 1);
+}
+
+/* Рыночный ориентир: Совет — голосованием, переходный период — Администрацией */
+function saveMarketBenchmark() {
+  if (!needAdmin('изменить рыночный ориентир')) return;
+  const v = num($('#ind_market').value);
+  const cur = num(DB.tariff.val.marketPerKm);
+  if (!(v > 0)) { toast('Укажите рыночный ориентир в ₽/км', 'bad'); return; }
+  if (Math.abs(v - cur) < 0.005) { toast('Значение не изменилось: ' + fmt2(cur) + ' ₽/км.', 'ok'); return; }
+  const elected = ONLINE && councilPhase() === 'elected' && !DB.settings.demoCouncil;
+  const title = 'Рыночный ориентир ставки: ' + fmt2(cur) + ' → ' + fmt2(v) + ' ₽/км';
+  if (elected) {
+    /* Совет избран — ориентир меняется только решением Совета: отправляем проект на голосование. */
+    const vote = {
+      id: nextDecisionId('ТАР'), kind: 'tariff', title,
+      summary: 'Приведение рыночного ориентира к фактическим ставкам рынка. Внесено Администрацией платформы после избрания Совета.',
+      author: 'Администрация платформы', created: todayISO(), deadline: addDays(todayISO(), 14),
+      payload: { marketPerKm: v }, status: 'voting', votes: {}, demo: false
+    };
+    DB.votes.unshift(vote);
+    DB.log.unshift({ at: todayISO(), text: 'Внесён проект решения ' + vote.id + ' об изменении рыночного ориентира.' });
+    sbPushVote(vote); sbJournal('Проект ' + vote.id + ': рыночный ориентир ' + fmt2(cur) + ' → ' + fmt2(v) + ' ₽/км.');
+    save(); render();
+    toast('Проект решения <b>' + vote.id + '</b> внесён: рыночный ориентир меняется <b>решением Совета</b> — голосование 14 дней, значение применится автоматически.', 'ok');
+    return;
+  }
+  /* Переходный период: утверждает Администрация */
+  DB.tariff.val.marketPerKm = v;
+  DB.tariff.approved = todayISO();
+  DB.tariff.approvedBy = 'Администрация платформы (переходный период)';
+  const mm = String(DB.tariff.version).match(/\d+(?:[.,]\d+)?/);
+  DB.tariff.version = 'в. ' + ((mm ? parseFloat(mm[0].replace(',', '.')) : 2.3) + 0.1).toFixed(1);
+  DB.decisions.unshift({
+    id: nextDecisionId('ОРГ'), title, kind: 'tariff', at: todayISO(),
+    result: 'Утверждено Администрацией (переходный период)',
+    effect: 'Рыночный ориентир ставки обновлён: ' + fmt2(cur) + ' → ' + fmt2(v) + ' ₽/км. Отражён в строке показателей и в сравнении ставок с рынком.'
+  });
+  DB.log.unshift({ at: todayISO(), text: 'Рыночный ориентир обновлён Администрацией: ' + fmt2(v) + ' ₽/км.' });
+  sbPushTariff(); sbPushDecisions(); sbJournal('Рыночный ориентир обновлён Администрацией: ' + fmt2(v) + ' ₽/км.');
+  save(); render();
+  toast('Рыночный ориентир обновлён: <b>' + fmt2(v) + ' ₽/км</b>. Внесено в реестр решений и журнал.', 'ok');
+}
+window.saveMarketBenchmark = saveMarketBenchmark;
+
+/* Курсы валют в строке показателей — справочные значения */
+function saveIndicators() {
+  if (!needAdmin('обновить курсы')) return;
+  const usd = num($('#ind_usd').value), cny = num($('#ind_cny').value), eur = num($('#ind_eur').value);
+  if (!usd && !cny && !eur) { toast('Заполните хотя бы один курс', 'bad'); return; }
+  const asOf = $('#ind_date').value || todayISO();
+  const src = ($('#ind_src').value || 'ЦБ РФ').trim();
+  DB.settings.indicators = { usd, cny, eur, asOf, src };
+  DB.log.unshift({ at: todayISO(), text: 'Показатели обновлены Администрацией: курс USD ' + fmt2(usd) + ' ₽, CNY ' + fmt2(cny) + ' ₽ на ' + dt(asOf) + ' (' + src + ').' });
+  sbPushSettings(); sbJournal('Курсы обновлены Администрацией: USD ' + fmt2(usd) + ' ₽ на ' + dt(asOf) + '.');
+  save(); render();
+  toast('Курсы сохранены: USD <b>' + fmt2(usd) + ' ₽</b>, CNY <b>' + fmt2(cny) + ' ₽</b> на ' + dt(asOf) + '. Обновлены в строке под шапкой.', 'ok');
+}
+window.saveIndicators = saveIndicators;
 
 function register() {
   if (!$('#r_c1').checked || !$('#r_c2').checked || !$('#r_c3').checked) { toast('Для регистрации необходимо принять Устав, Правила и подтвердить документы', 'bad'); return; }

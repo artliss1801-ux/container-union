@@ -153,11 +153,20 @@ const T = (n, f) => Promise.resolve().then(f).then(r => console.log('✓', n, r 
     if (!/Контейнерный Союз/.test(logoScreenReader)) throw new Error('логотип не читается программами для слепых');
     return 'в шапке только кнопка меню и логотип; название читается с экрана как «Контейнерный Союз»';
   });
-  await T('лента событий работает как прежде', () => {
-    if (d.querySelectorAll('#tickerIn span').length < 10) throw new Error('лента пуста');
-    const t2 = norm(d.querySelector('#tickerIn').textContent);
-    if (!/Тарифная сетка/.test(t2)) throw new Error('нет данных');
-    return 'лента: ' + d.querySelectorAll('#tickerIn span').length + ' сообщений';
+  await T('строка показателей: статичная и только актуальные цифры', () => {
+    const strip = d.querySelector('#indicIn');
+    if (!strip) throw new Error('нет строки показателей');
+    const css = [...d.querySelectorAll('style')].map(x => x.textContent).join('') + (w.getComputedStyle ? w.getComputedStyle(strip).cssText : '');
+    if (/marquee/i.test(css)) throw new Error('осталась анимация бегущей строки');
+    const st = w.getComputedStyle(strip);
+    if (st.animationName && st.animationName !== 'none') throw new Error('строка анимируется: ' + st.animationName);
+    const t2 = norm(strip.textContent);
+    ['ДТ', '«Платон»', 'Рыночный ориентир', 'USD'].forEach(x => { if (!t2.includes(x)) throw new Error('нет показателя ' + x); });
+    /* в строке не должно быть событий платформы и подсказок */
+    [/Реестр:/, /Биржа:/, /Подсказка/, /Логотип/, /Переходный период/].forEach(rx => {
+      if (rx.test(t2)) throw new Error('в строке лишнее: ' + rx);
+    });
+    return t2.replace(/\s+/g, ' ').trim().slice(0, 120);
   });
   console.log('\nПровалов:', errs.length);
   process.exit(errs.length ? 1 : 0);

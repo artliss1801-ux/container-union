@@ -193,15 +193,18 @@ footer{border-top:1px solid var(--line);color:var(--dim);font-size:12.5px;paddin
   opacity:0;pointer-events:none;transform:translateY(10px);transition:opacity .25s,transform .25s,box-shadow .25s,border-color .25s}
 .totop.show{opacity:1;pointer-events:auto;transform:none}
 .totop:hover{border-color:var(--acc);box-shadow:0 10px 24px rgba(255,159,28,.3)}
-/* 2. Лента событий платформы */
-.ticker{position:relative;overflow:hidden;border-bottom:1px solid var(--line);
-  background:linear-gradient(90deg,rgba(255,159,28,.10),rgba(17,28,44,.9) 22%,rgba(17,28,44,.9) 78%,rgba(62,166,255,.10))}
-.ticker-in{display:flex;gap:34px;width:max-content;padding:6px 0;white-space:nowrap;animation:marquee 52s linear infinite}
-.ticker:hover .ticker-in{animation-play-state:paused}
-.ticker span{font-size:12px;color:var(--mut)}
-.ticker b{color:var(--acc2)}
-.ticker .t-ok{color:#7ee6ab}
-@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+/* 2. Показатели рынка: статичная строка под шапкой (без бегущей строки).
+      Только актуальные цифры: ДТ, «Платон», рыночный ориентир, курсы валют, версия сетки. */
+.indic{border-bottom:1px solid var(--line);
+  background:linear-gradient(90deg,rgba(255,159,28,.08),rgba(17,28,44,.92) 22%,rgba(17,28,44,.92) 78%,rgba(62,166,255,.08))}
+.indic-in{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;padding:7px 16px;max-width:1260px;margin:0 auto}
+.indic .i{display:flex;align-items:baseline;gap:6px;font-size:12px;color:var(--mut);white-space:nowrap;
+  padding:1px 9px;border:1px solid var(--line);border-radius:999px;background:rgba(28,43,68,.42)}
+.indic .i em{font-style:normal;color:var(--dim)}
+.indic .i b{color:var(--acc2);font-variant-numeric:tabular-nums}
+.indic .i.cur b{color:#8fd3ff}
+.indic .i.src{border-color:transparent;background:none;padding-left:2px}
+.indic .i.src b{color:var(--mut)}
 /* 3. Вкладки: без горизонтальной прокрутки, подчёркивание с анимацией */
 .tabs-in button{position:relative;border-radius:10px 10px 0 0;transition:color .2s,background .2s,transform .15s}
 .tabs-in button:hover{background:rgba(62,166,255,.07)}
@@ -295,7 +298,7 @@ button.copy:hover{text-decoration:underline}
     Короткая ссылка: <b style="color:var(--acc2)">tinyurl.com/cont-union</b>
   </div>
 </aside>
-<div class="ticker" id="ticker" title="Лента платформы: тарифная сетка, реестр, Совет — наведите, чтобы остановить"><div class="ticker-in" id="tickerIn"></div></div>
+<div class="indic" id="indic" title="Актуальные показатели рынка. Значения берутся из тарифной сетки платформы и официальных курсов; обновляет Администрация, после выборов Совета рыночный ориентир меняется решением Совета"><div class="indic-in" id="indicIn"></div></div>
 <main><div class="wrap" id="view"></div></main>
 <button class="totop" id="toTop" title="Наверх" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
 <footer><div class="wrap">

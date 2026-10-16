@@ -298,7 +298,11 @@ function seed() {
   return {
     carriers, members, votes, loads, applications, calcs, decisions,
     profiles: [],   /* роли участников: в онлайне приходят из защищённой базы */
-    settings: { demoCouncil: false, electionThreshold: 50, elections: null },
+    settings: {
+      demoCouncil: false, electionThreshold: 50, elections: null,
+      /* Актуальные показатели строки под шапкой: официальные курсы ЦБ РФ. */
+      indicators: { usd: 83.76, cny: 12.4991, eur: 93.7693, asOf: '2026-10-16', src: 'ЦБ РФ' }
+    },
     tariff: JSON.parse(JSON.stringify(DEFAULT_TARIFF)),
     log: [{ at: '2026-10-15', text: 'Демонстрационные данные загружены (прототип v0.9).' }]
   };

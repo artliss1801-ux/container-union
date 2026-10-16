@@ -36,8 +36,8 @@ const T = (n, f) => Promise.resolve().then(f).then(r => console.log('✓', n, r 
     if (w.eval('TAB') !== 'council') throw new Error('раздел не открылся');
     return 'разделов в меню: ' + n + '; выбор раздела закрывает меню';
   });
-  await T('лента событий показывает данные из базы', () => {
-    const t = txt('#tickerIn');
+  await T('строка показателей показывает данные из базы', () => {
+    const t = txt('#indicIn');
     if (!/86,72|86.72/.test(t)) throw new Error('нет цены ДТ: ' + t.slice(0, 80));
     return t.slice(0, 110) + '…';
   });
