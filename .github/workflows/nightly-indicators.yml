@@ -1,0 +1,54 @@
+# Ночной сбор показателей строки под шапкой «Контейнерного Союза».
+#
+# Что делает: запускает tools/fetch_indicators.mjs — скрипт читает открытые источники
+#   • курсы валют — ЦБ РФ (зеркало cbr-xml-daily.ru, официальные курсы);
+#   • дизельное топливо — недельная средняя по РФ из открытой сводки Росстата;
+#   • «Платон» — тариф системы из открытых публикаций,
+# и записывает значения в таблицу settings (ключ indicators).
+#
+# Важно: тарифную сетку задача НЕ меняет. Значения появляются в кабинете администратора
+# в блоке «Открытые данные», откуда Администрация (после выборов — Совет) переносит их
+# в проект решения. Если источник не ответил или значение не проходит проверку диапазона —
+# прежнее значение сохраняется.
+#
+# Доступ к базе: вход администратора платформы. Пароль хранится только в секретах GitHub
+# (Settings → Secrets and variables → Actions → ADMIN_PASSWORD) и в файлы не попадает.
+# Если появится секрет SUPABASE_SERVICE_KEY — скрипт предпочтёт служебный ключ.
+name: Ночной сбор показателей
+
+on:
+  schedule:
+    - cron: '0 21 * * *'      # 21:00 UTC = 00:00 по Москве
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: indicators
+  cancel-in-progress: false
+
+jobs:
+  indicators:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Забрать исходники
+        uses: actions/checkout@v4
+
+      - name: Подготовить Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Собрать показатели из открытых источников
+        env:
+          SUPABASE_URL: https://nciyhaghjqddkqzuimff.supabase.co
+          ADMIN_EMAIL: artliss@rambler.ru
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: node tools/fetch_indicators.mjs
+
+      - name: Итог
+        if: always()
+        run: echo "Показатели собраны и записаны в таблицу settings (ключ indicators)."
