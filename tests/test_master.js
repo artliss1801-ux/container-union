@@ -140,6 +140,21 @@ const T = async (n, f) => { try { const r = await f(); console.log('✓', n, r ?
     if (!(km > 1200 && km < 1750)) throw new Error('расстояние: ' + km);
     return 'в базе ' + total + ' пунктов · Новороссийск → Москва ' + km + ' км';
   });
+  await T('точки маршрута: без полей ₽ и часов — значения по виду точки', () => {
+    w.showTab('calc');
+    const inputs = d.querySelectorAll('#routePoints input[inputmode="decimal"]').length;
+    if (inputs) throw new Error('в маршруте остались числовые поля: ' + inputs);
+    const rows = Array.from(d.querySelectorAll('#routePoints .route-row')).map(x => norm(x.textContent).replace(/\s+/g, ' '));
+    if (!rows.every(r => /2 ч/.test(r))) throw new Error('погрузка/выгрузка без авто-значений: ' + rows.join(' || '));
+    w.addPoint('customs');
+    const after = norm(d.querySelectorAll('#routePoints .route-row')[1].textContent);
+    if (!/25 000 ₽ · 6 ч/.test(after)) throw new Error('таможня без авто-значений: ' + after);
+    w.setPointKind(1, 'svh');
+    const svh = norm(d.querySelectorAll('#routePoints .route-row')[1].textContent);
+    if (!/6 000 ₽ · 4 ч/.test(svh)) throw new Error('смена вида не пересчитала значения: ' + svh);
+    w.setPointKind(1, 'customs'); w.removePoint(1);
+    return 'полей ввода нет · таможня 25 000 ₽ · 6 ч, СВХ 6 000 ₽ · 4 ч — подставляются сами';
+  });
   await T('дополнительные точки: таможня между погрузкой и выгрузкой', () => {
     w.showTab('calc');
     const before = w.eval('CALC ? Math.round(CALC.base) : 0');
@@ -154,6 +169,10 @@ const T = async (n, f) => { try { const r = await f(); console.log('✓', n, r ?
     if (!(after > before)) throw new Error('ставка не выросла: ' + before + ' → ' + after);
     if (!new RegExp('таможня Ростов').test(w.eval('CALC.route'))) throw new Error('маршрут в расчёте: ' + w.eval('CALC.route'));
     return names + ' · доп. расходы ' + fee + ' ₽ · ставка ' + before + ' → ' + after + ' ₽';
+  });
+  await T('после проверки маршрут возвращён к двум точкам', () => {
+    w.eval('while (POINTS.length > 2) POINTS.splice(1, 1); savePoints(); renderPoints(); calcDistance(true); calcRun(true);');
+    return 'точек: ' + w.eval('POINTS.length');
   });
   await T('поле автоподбора работает в форме регистрации', () => {
     w.demoEnter('guest'); w.showTab('cabinet');
@@ -197,8 +216,8 @@ const T = async (n, f) => { try { const r = await f(); console.log('✓', n, r ?
   });
   await T('калькулятор считает', () => {
     w.showTab('calc'); w.eval("document.querySelector('#c_from').value='Новороссийск';document.querySelector('#c_to').value='Москва';setPointName(0,'Новороссийск');setPointName(POINTS.length-1,'Москва');calcDistance();calcRun();");
-    const m = txt().match(/([\d\s]{5,})₽/);
-    if (!m) throw new Error('нет расчёта');
+    const m = txt().match(/Рекомендованная ставка\s*([\d\s]+)₽/);
+    if (!m) throw new Error('нет рекомендованной ставки');
     return m[1].trim() + ' ₽';
   });
   await T('нет ошибок JS', () => { if (errs.length) throw new Error(errs.join(' | ')); });

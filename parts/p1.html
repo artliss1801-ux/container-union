@@ -221,9 +221,13 @@ footer{border-top:1px solid var(--line);color:var(--dim);font-size:12.5px;paddin
 .ac-item:last-child{border-bottom:none}
 .ac-item:hover,.ac-item.on{background:rgba(255,159,28,.14)}
 .ac-item.mini{cursor:default;color:var(--dim)}
+/* Что точка добавляет к ставке: расходы и время по виду точки (без полей ввода) */
+.pt-auto{font-size:12px;color:var(--mut);white-space:nowrap;min-width:118px;text-align:right;
+  font-variant-numeric:tabular-nums;padding:0 2px}
 .indic .i.auto b{color:#7ee6ab}
 @media (max-width:640px){
   .route-row{flex-wrap:wrap}
+  .pt-auto{min-width:0;font-size:11px}
   .indic-in{gap:3px 6px;padding:6px 10px}
   .indic .i{font-size:11px;padding:1px 7px}
   .indic .i em{display:none}

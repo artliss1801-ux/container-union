@@ -153,6 +153,14 @@ const T = (n, f) => Promise.resolve().then(f).then(r => console.log('✓', n, r 
     if (!/Контейнерный Союз/.test(logoScreenReader)) throw new Error('логотип не читается программами для слепых');
     return 'в шапке только кнопка меню и логотип; название читается с экрана как «Контейнерный Союз»';
   });
+  await T('точки маршрута: расходы и время показаны без полей ввода', () => {
+    w.showTab('calc');
+    if (d.querySelectorAll('#routePoints input[inputmode="decimal"]').length) throw new Error('есть числовые поля');
+    const rows = Array.from(d.querySelectorAll('#routePoints .route-row')).map(x => norm(x.textContent));
+    if (!rows[0].includes('2 ч') || !rows[rows.length - 1].includes('2 ч')) throw new Error('нет авто-значений погрузки/выгрузки: ' + rows.join(' || '));
+    if (!d.querySelector('#routePoints .pt-auto')) throw new Error('нет подписи авто-значений');
+    return 'в строке: вид точки · населённый пункт · что точка добавляет к ставке';
+  });
   await T('строка показателей: статичная и только актуальные цифры', () => {
     const strip = d.querySelector('#indicIn');
     if (!strip) throw new Error('нет строки показателей');

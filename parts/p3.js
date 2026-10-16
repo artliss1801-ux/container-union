@@ -268,7 +268,7 @@ function viewCalc() {
         <div class="grid g2">
           <div>
             <div class="field"><label>Маршрут: пункты по порядку</label>
-              <div class="mini" style="margin:-2px 0 6px">Начните вводить название — подсказки берутся из базы населённых пунктов России (${SETTLEMENTS.length} городов и посёлков). Между пунктами можно добавить таможню, СВХ или депо.</div>
+              <div class="mini" style="margin:-2px 0 6px">Начните вводить название — подсказки берутся из базы населённых пунктов России (${SETTLEMENTS.length} городов и посёлков). Между пунктами можно добавить таможню, СВХ или депо: расходы и время на точке платформа считает сама по её виду — они сразу входят в ставку.</div>
               <div id="routePoints"></div>
               <div class="row" style="gap:6px;margin:6px 0 2px">
                 <button class="btn sm" onclick="addPoint('load')">＋ Погрузка</button>
@@ -386,8 +386,7 @@ function renderPoints() {
       '<span class="mini" style="min-width:18px;text-align:right">' + (i + 1) + '.</span>' + kindSel +
       '<div class="ac-wrap"><input class="inp ac-input" id="' + (i === 0 ? 'c_from' : i === POINTS.length - 1 ? 'c_to' : 'pt_' + i) + '" autocomplete="off" ' +
         'data-i="' + i + '" value="' + esc(p.name || '') + '" placeholder="Начните вводить название…"></div>' +
-      '<input class="inp" style="max-width:110px" inputmode="decimal" title="Дополнительные расходы по точке, ₽" value="' + (p.fee ? fmt(p.fee) : '') + '" placeholder="₽" oninput="setPointFee(' + i + ', this.value)">' +
-      '<input class="inp" style="max-width:80px" inputmode="decimal" title="Время на точке, часов (простой)" value="' + (p.hours || 0) + '" oninput="setPointHours(' + i + ', this.value)">' +
+      '<span class="pt-auto" title="Расходы и время на точке считаются автоматически по её виду: таможня — 25 000 ₽ и 6 ч, СВХ/терминал — 6 000 ₽ и 4 ч, депо — 1 ч, погрузка/выгрузка — 2 ч. Эти значения входят в ставку: расходы — в себестоимость, часы — в расчёт простоя.">' + pointAutoText(p) + '</span>' +
       (fixed ? '<span style="width:32px"></span>' : '<button class="btn sm bad" title="Убрать точку" onclick="removePoint(' + i + ')">✕</button>') +
       '</div>';
   }).join('') +
@@ -395,7 +394,21 @@ function renderPoints() {
   box.querySelectorAll('.ac-input').forEach(inp => attachAutocomplete(inp));
   updateRouteInfo();
 }
-function setPointKind(i, kind) { POINTS[i].kind = kind; const k = pointKind(kind); if (!POINTS[i].fee) POINTS[i].fee = k.fee; if (!POINTS[i].hours) POINTS[i].hours = k.hours; savePoints(); renderPoints(); calcDistance(true); calcRun(true); }
+/* Что точка добавляет к ставке: считается по виду точки, без ручного ввода */
+function pointAutoText(p) {
+  const out = [];
+  if (num(p.fee) > 0) out.push(money(num(p.fee)));
+  const h = num(p.hours);
+  if (h > 0) out.push((h % 1 ? fmt2(h) : String(h)) + ' ч');
+  return out.join(' · ') || '—';
+}
+/* Вид точки ведёт её значения: полей ручного ввода больше нет, поэтому при смене вида
+   расходы и время всегда переставляются на типовые для этого вида. */
+function setPointKind(i, kind) {
+  POINTS[i].kind = kind; const k = pointKind(kind);
+  POINTS[i].fee = k.fee; POINTS[i].hours = k.hours;
+  savePoints(); renderPoints(); calcDistance(true); calcRun(true);
+}
 function setPointFee(i, v) { POINTS[i].fee = num(v); savePoints(); calcRun(true); }
 function setPointHours(i, v) { POINTS[i].hours = num(v); savePoints(); calcRun(true); }
 function setPointName(i, name) {
@@ -409,7 +422,7 @@ function addPoint(kind) {
   POINTS.splice(Math.max(1, POINTS.length - 1), 0, { kind: k.k, name: '', fee: k.fee, hours: k.hours });
   savePoints(); renderPoints();
   const inp = $(`#routePoints .ac-input[data-i="${POINTS.length - 2}"]`); if (inp) inp.focus();
-  toast('Точка добавлена: <b>' + k.label + '</b>. Укажите населённый пункт — подсказки появятся при вводе.', 'ok');
+  toast('Точка добавлена: <b>' + k.label + '</b> — в ставку автоматически добавились ' + pointAutoText(k) + '. Укажите населённый пункт (подсказки появятся при вводе).', 'ok');
 }
 function removePoint(i) {
   if (POINTS.length <= 2) return;
@@ -890,7 +903,7 @@ function calcPreset(from, to) {
   toast('Плечо подставлено: <b>' + esc(from) + ' → ' + esc(to) + '</b> — ставка пересчитана', 'ok');
 }
 window.calcPreset = calcPreset;
-[renderPoints, addPoint, removePoint, setPointKind, setPointFee, setPointHours, setPointName, attachAutocomplete, updateRouteInfo, suggestSettlements, findSettlement, routeKm]
+[renderPoints, addPoint, removePoint, setPointKind, setPointFee, setPointHours, setPointName, pointAutoText, attachAutocomplete, updateRouteInfo, suggestSettlements, findSettlement, routeKm]
   .forEach(f => window[f.name] = f);
 
 /* ---------- реестр: живой поиск по таблице ---------- */
