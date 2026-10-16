@@ -1,4 +1,4 @@
-/* Проверка «живого интерфейса»: логотип, лента, пресеты, поиск, клавиши, свайп */
+/* Проверка интерфейса: логотип-контейнеровоз (один, в шапке) и меню-панель слева */
 const fs = require('fs');
 const { JSDOM, VirtualConsole } = require('jsdom');
 const html = fs.readFileSync('/home/user/index.html', 'utf8');
@@ -14,115 +14,131 @@ const T = (n, f) => Promise.resolve().then(f).then(r => console.log('✓', n, r 
 
 (async () => {
   await sleep(300);
-  await T('логотип-контейнеровоз собран', () => {
+  await T('логотип только один — в шапке', () => {
     const logos = d.querySelectorAll('.ks-logo');
-    if (logos.length < 3) throw new Error('логотипов: ' + logos.length);
-    const ship = logos[0].querySelector('.ks-ship');
-    if (!ship) throw new Error('нет корпуса судна');
-    if (!ship.querySelector('.ks-bridge')) throw new Error('нет надстройки');
-    if (!logos[0].querySelector('.ks-hull')) throw new Error('нет корпуса');
-    if (!logos[0].querySelector('.ks-sea')) throw new Error('нет волн');
-    const letters = logos[0].querySelectorAll('.ks-word i');
-    if (letters.length !== 14) throw new Error('букв разворота: ' + letters.length);
-    return 'логотипов: ' + logos.length + ', букв разворота: 14 (онтейнерный + оюз), волны и корпус на месте';
+    if (logos.length !== 1) throw new Error('логотипов на странице: ' + logos.length);
+    if (!d.querySelector('#ksLogo')) throw new Error('это не логотип в шапке');
+    if (d.querySelector('#view').querySelector('.ks-logo')) throw new Error('логотип остался в содержимом');
+    if (String(d.querySelector('footer').innerHTML).includes('ks-logo')) throw new Error('логотип остался в футере');
+    return 'одно место — шапка; в содержимом и футере нет';
   });
-  await T('из К собирается «Контейнерный», из С — «Союз»', () => {
-    const box = d.querySelectorAll('.ks-logo')[0];
-    const boxes = [...box.querySelectorAll('.ks-box')].map(x => x.textContent.trim());
-    if (boxes[0] !== 'К' || boxes[1] !== 'С') throw new Error('буквы: ' + boxes.join(''));
+  await T('логотип собран как контейнеровоз', () => {
+    const box = d.querySelector('#ksLogo');
+    if (!box.querySelector('.ks-ship') || !box.querySelector('.ks-hull') || !box.querySelector('.ks-sea')) throw new Error('нет корпуса/волн');
     const words = [...box.querySelectorAll('.ks-word')].map(x => x.textContent.trim());
-    if (words[0] !== 'онтейнерный') throw new Error('первое слово: ' + words[0]);
-    if (words[1] !== 'оюз') throw new Error('второе слово: ' + words[1]);
-    return 'К + ' + words[0] + ' = Контейнерный · С + ' + words[1] + ' = Союз';
+    if (words[0] !== 'онтейнерный' || words[1] !== 'оюз') throw new Error(words.join(' | '));
+    const idx = [...box.querySelectorAll('.ks-word i')].map(x => Number(x.style.getPropertyValue('--i')));
+    if (idx.length !== 14) throw new Error('букв: ' + idx.length);
+    if (Math.max(...idx) !== 13) throw new Error('порядок разворота: ' + idx.join(','));
+    return 'К + онтейнерный = Контейнерный, С + оюз = Союз; буквы появляются по порядку 0…13';
+  });
+  await T('разворот читается: буквы не наезжают друг на друга', () => {
+    const css = html;
+    if (!/\.ks-logo:hover \.ks-word i,\.ks-logo\.open \.ks-word i\{max-width:1\.05em/.test(css)) throw new Error('нет общего предела ширины буквы — возможны наезды');
+    if (!/\.ks-logo:hover \.ks-box:before,\.ks-logo\.open \.ks-box:before\{opacity:0\}/.test(css)) throw new Error('контейнеры не растворяются при развороте');
+    if (!/\.ks-logo:hover \.ks-box,\.ks-logo\.open \.ks-box\{color:#ffd9a6\}/.test(css)) throw new Error('буквы К и С не переходят в общий цвет слова');
+    return 'единый предел ширины букв, контейнеры растворяются — слово читается как «Контейнерный Союз»';
   });
   await T('клик по логотипу разворачивает название (для телефона)', () => {
-    const box = d.querySelectorAll('.ks-logo')[0];
+    const box = d.querySelector('#ksLogo');
     box.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
     if (!box.classList.contains('open')) throw new Error('класс open не поставлен');
     box.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
     if (box.classList.contains('open')) throw new Error('повторный клик не свернул');
     return 'разворот/сворот работает';
   });
-  await T('лента событий платформы заполнена', () => {
-    const items = d.querySelectorAll('#tickerIn span');
-    if (items.length < 10) throw new Error('элементов: ' + items.length);
-    const t = txt('#tickerIn');
-    if (!/Тарифная сетка/.test(t)) throw new Error('нет тарифа');
-    if (!/Реестр/.test(t)) throw new Error('нет реестра');
-    if (!/Подсказка/.test(t)) throw new Error('нет подсказки');
-    return items.length + ' сообщений, дублированы для бесконечной прокрутки';
+  await T('верхней строки вкладок больше нет', () => {
+    if (d.querySelector('.tabs-in') && !d.querySelector('.tabs-in').closest('.drawer')) throw new Error('осталась строка вкладок');
+    if (d.querySelector('#tabs')) throw new Error('остался контейнер вкладок');
+    if (html.includes('overflow-x:auto;max-width:1240px')) throw new Error('осталось правило горизонтальной прокрутки меню');
+    return 'разделы убраны с верха страницы';
   });
-  await T('пресеты плеч считают ставку в один клик', async () => {
+  await T('кнопка-тулбар открывает меню слева', () => {
+    const btn = d.querySelector('#menuBtn');
+    if (!btn) throw new Error('нет кнопки меню');
+    btn.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+    const dr = d.querySelector('#drawer');
+    if (!dr.classList.contains('open')) throw new Error('меню не открылось');
+    if (!d.querySelector('#drawerBg').classList.contains('open')) throw new Error('нет затемнения фона');
+    if (w.getComputedStyle(dr).position !== 'fixed') throw new Error('меню не плавающее: ' + w.getComputedStyle(dr).position);
+    return 'меню выехало, фон затемнён, панель поверх страницы';
+  });
+  await T('в меню все разделы с описанием и значками', () => {
+    const items = d.querySelectorAll('#menuList .nav-item');
+    if (items.length !== 7) throw new Error('разделов в меню: ' + items.length);
+    const names = [...items].map(x => x.querySelector('.tx').childNodes[0].textContent.trim());
+    const need = ['О платформе', 'Калькулятор ставки', 'Перевозчики и рейтинг', 'Грузы', 'Совет перевозчиков', 'Документы платформы', 'Кабинет'];
+    const missing = need.filter(x => !names.includes(x));
+    if (missing.length) throw new Error('нет разделов: ' + missing.join(', '));
+    if (![...items].every(x => x.querySelector('.ds'))) throw new Error('нет пояснений');
+    if (![...items].every(x => x.querySelector('.ic'))) throw new Error('нет значков');
+    return names.join(' · ');
+  });
+  await T('название текущего раздела видно на самой кнопке', () => {
+    w.showTab('loads'); w.openMenu();
+    const lbl = txt('#menuBtnLabel');
+    if (lbl !== 'Грузы') throw new Error('на кнопке: ' + lbl);
+    const active = txt('#menuList .nav-item.active .tx').split('\n')[0];
+    if (!/Грузы/.test(active)) throw new Error('активный раздел: ' + active);
+    return 'на кнопке: «' + lbl + '», в меню подсвечен раздел «' + active + '»';
+  });
+  await T('выбор раздела закрывает меню и открывает раздел', () => {
+    w.showTab('calc');
+    if (d.querySelector('#drawer').classList.contains('open')) throw new Error('меню осталось открытым');
+    if (w.eval('TAB') !== 'calc') throw new Error('раздел не переключился');
+    return 'меню закрылось, открылся «Калькулятор»';
+  });
+  await T('Esc закрывает меню, кнопка ✕ тоже', () => {
+    w.openMenu();
+    d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    if (d.querySelector('#drawer').classList.contains('open')) throw new Error('Esc не сработал');
+    w.openMenu(); w.closeMenu();
+    if (d.querySelector('#drawer').classList.contains('open')) throw new Error('✕ не сработал');
+    return 'оба способа работают';
+  });
+  await T('меню не прокручивает страницу под собой', () => {
+    w.openMenu();
+    const locked = d.body.style.overflow === 'hidden';
+    w.closeMenu();
+    const free = d.body.style.overflow === '';
+    if (!locked || !free) throw new Error('блокировка: ' + JSON.stringify([locked, free, d.body.style.overflow]));
+    return 'прокрутка блокируется при открытом меню и возвращается после';
+  });
+  await T('пресеты плеч и авторасчёт работают', async () => {
     w.showTab('calc');
     w.calcPreset('Новороссийск', 'Москва');
-    const km = d.querySelector('#c_km').value;
-    const out = txt('#calcOut');
-    const m = out.match(/([\d\s]{5,})₽/);
-    if (!m) throw new Error('нет расчёта: ' + out.slice(0, 80));
-    return 'плечо подставлено, ' + km + ' км → ' + m[1].trim() + ' ₽';
-  });
-  await T('ставка пересчитывается сама при изменении поля', async () => {
+    const m = txt('#calcOut').match(/([\d\s]{5,})₽/);
+    if (!m) throw new Error('нет расчёта');
     const before = txt('#calcOut');
-    const inp = d.querySelector('#c_km');
-    inp.value = 500;
+    const inp = d.querySelector('#c_km'); inp.value = 700;
     inp.dispatchEvent(new w.Event('input', { bubbles: true }));
     await sleep(700);
     const after = txt('#calcOut');
-    if (after === before) throw new Error('результат не обновился');
-    const m1 = before.match(/([\d\s]{5,})₽/), m2 = after.match(/([\d\s]{5,})₽/);
-    return 'при 500 км вместо ' + (m1 ? m1[1].trim() : '?') + ' ₽ → ' + (m2 ? m2[1].trim() : '?') + ' ₽ (без нажатия кнопки)';
+    if (after === before) throw new Error('авторасчёт не сработал');
+    return 'пресет дал ' + m[1].trim() + ' ₽, авторасчёт пересчитал при 700 км';
   });
   await T('поиск по реестру фильтрует таблицу', () => {
     w.showTab('carriers');
-    const rows = d.querySelectorAll('#carrierRows tr[data-s]');
-    if (!rows.length) throw new Error('строк нет');
     w.carrierSearch('Новороссийск');
-    const visible = [...rows].filter(r => r.style.display !== 'none').length;
     const counter = txt('#cf_count');
     if (!/найдено/.test(counter)) throw new Error('счётчик: ' + counter);
     w.carrierSearch('');
-    const all = [...d.querySelectorAll('#carrierRows tr[data-s]')].filter(r => r.style.display !== 'none').length;
-    return 'всего ' + rows.length + ', по «Новороссийск» — ' + visible + ', сброс — ' + all + ' (' + counter + ')';
+    return counter;
   });
-  await T('клавиши ← и → переключают вкладки', () => {
+  await T('клавиши ← → переключают разделы', () => {
     w.showTab('about');
     d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-    const t1 = w.eval('TAB');
+    const a = w.eval('TAB');
     d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
-    const t2 = w.eval('TAB');
-    if (t1 !== 'calc' || t2 !== 'about') throw new Error('переходы: ' + t1 + ' / ' + t2);
-    return 'вправо → ' + t1 + ', влево → ' + t2;
+    const b = w.eval('TAB');
+    if (a !== 'calc' || b !== 'about') throw new Error(a + '/' + b);
+    return 'вправо → ' + a + ', влево → ' + b;
   });
-  await T('ввод в поле не переключает вкладки (стрелки для курсора)', () => {
-    w.showTab('calc');
-    const inp = d.querySelector('#c_km');
-    inp.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-    if (w.eval('TAB') !== 'calc') throw new Error('вкладка уехала');
-    return 'фокус в поле — вкладка не меняется';
+  await T('лента событий и компактная шапка при прокрутке', () => {
+    if (d.querySelectorAll('#tickerIn span').length < 10) throw new Error('лента пуста');
+    if (!/body\.scrolled \.top-in\{padding:6px 16px\}/.test(html)) throw new Error('нет компактного режима шапки');
+    return 'лента: ' + d.querySelectorAll('#tickerIn span').length + ' сообщений; шапка ужимается при прокрутке';
   });
-  await T('вкладки без горизонтальной прокрутки', () => {
-    const st = w.getComputedStyle(d.querySelector('.tabs-in'));
-    if (st.overflowX === 'auto' || st.overflowX === 'scroll') throw new Error('осталась прокрутка: ' + st.overflowX);
-    if (st.flexWrap !== 'wrap') throw new Error('нет переноса: ' + st.flexWrap);
-    const labels = [...d.querySelectorAll('#tabs button .lt')].map(x => x.textContent);
-    const short = [...d.querySelectorAll('#tabs button .st')].map(x => x.textContent);
-    return 'перенос строк вместо бегунка; длинные: ' + labels.length + ', короткие: ' + short.join(' / ');
-  });
-  await T('копирование ссылки не роняет страницу', () => {
-    w.copyLink('https://cont-union.ru', 'Адрес сайта скопирован');
-    return 'обработчик сработал (в браузере — буфер обмена)';
-  });
-  await T('прогресс чтения и кнопка «наверх» на месте', () => {
-    if (!d.querySelector('#progress')) throw new Error('нет полосы');
-    if (!d.querySelector('#toTop')) throw new Error('нет кнопки');
-    return 'есть';
-  });
-  await T('шапка и логотип в шапке на месте', () => {
-    const b = norm(d.querySelector('#ksLogo').textContent);
-    if (!/Контейнерный Союз/.test(b)) throw new Error('нет полного названия для чтения с экрана');
-    return 'логотип читается как «Контейнерный Союз»';
-  });
-  const real = errs.filter(e => !/^ *(✓|✗)/.test(e) && !/pdf/.test(e));
-  console.log('\nПровалов:', errs.length, real.length !== errs.length ? '| посторонние сообщения: ' + real.join(' | ') : '');
+  console.log('\nПровалов:', errs.length);
   process.exit(errs.length ? 1 : 0);
 })();

@@ -23,23 +23,41 @@ $('#modalBg') && $('#modalBg').addEventListener('click', e => { if (e.target.id 
 
 /* ---------- вкладки ---------- */
 const TABS = [
-  ['about', 'О платформе', 'О платформе'],
-  ['calc', 'Калькулятор ставки', 'Калькулятор'],
-  ['carriers', 'Перевозчики и рейтинг', 'Перевозчики'],
-  ['loads', 'Грузы', 'Грузы'],
-  ['council', 'Совет перевозчиков', 'Совет'],
-  ['docs', 'Документы платформы', 'Документы'],
-  ['cabinet', 'Кабинет', 'Кабинет']
+  ['about', 'О платформе', 'Что это, зачем и как устроено', '⚓'],
+  ['calc', 'Калькулятор ставки', 'Расчёт по тарифной сетке', '🧮'],
+  ['carriers', 'Перевозчики и рейтинг', 'Реестр, поиск, карточки', '📋'],
+  ['loads', 'Грузы', 'Биржа заявок и ставки', '📦'],
+  ['council', 'Совет перевозчиков', 'Голосования и решения', '🗳️'],
+  ['docs', 'Документы платформы', 'Устав, Правила, регламенты', '📄'],
+  ['cabinet', 'Кабинет', 'Регистрация, заявки, рейтинг', '👤']
 ];
 let TAB = 'about';
+let MENU_OPEN = false;
+
+/* Значки у разделов: сколько открытых голосований и заявок ждёт проверки */
+function menuBadges(id) {
+  let h = '';
+  if (id === 'council' && realOpenVotes()) h += ' <span class="badge b-gold">' + realOpenVotes() + '</span>';
+  if (id === 'cabinet' && ROLE === 'admin') {
+    const pend = DB.applications.filter(a => a.status === 'pending').length;
+    if (pend) h += ' <span class="badge b-info">' + pend + '</span>';
+  }
+  return h;
+}
 
 function renderTabs() {
-  $('#tabs').innerHTML = TABS.map(([id, l, short]) =>
-    '<button class="' + (TAB === id ? 'active' : '') + '" onclick="showTab(\'' + id + '\')" title="' + l + '">' +
-    '<span class="lt">' + l + '</span><span class="st">' + (short || l) + '</span>' +
-    (id === 'council' ? (councilPhase() === 'formation' ? ' <span class="mini">(формируется)</span>' : '') + (realOpenVotes() ? ' <span class="badge b-gold">' + realOpenVotes() + '</span>' : '') : '') +
-    (id === 'cabinet' && ROLE === 'admin' && DB.applications.filter(a => a.status === 'pending').length ? ' <span class="badge b-info">' + DB.applications.filter(a => a.status === 'pending').length + '</span>' : '') +
-    '</button>').join('');
+  const list = $('#menuList');
+  if (list) list.innerHTML = TABS.map(([id, l, d, ic]) =>
+    '<button class="nav-item' + (TAB === id ? ' active' : '') + '" onclick="showTab(\'' + id + '\')" title="' + l + '">' +
+    '<span class="ic">' + ic + '</span><span class="tx">' + l + (d ? '<span class="ds">' + d + '</span>' : '') + '</span>' +
+    menuBadges(id) + '</button>').join('');
+  const cur = TABS.find(x => x[0] === TAB), lbl = $('#menuBtnLabel');
+  if (lbl && cur) lbl.textContent = cur[1];
+  const mb = $('#menuBtn'); if (mb) mb.classList.toggle('on', MENU_OPEN);
+  return '';
+}
+function renderMenuOldPlaceholder() {   /* заменяет старую отрисовку строки вкладок; оставлено пустым */
+  return '';
 }
 function openVotesCount() { return DB.votes.filter(v => v.status === 'voting').length; }
 /* Сколько РЕАЛЬНЫХ открытых вопросов (примеры для ознакомления не считаются,
@@ -49,7 +67,26 @@ function realOpenVotes() {
   return DB.votes.filter(v => v.status === 'voting' && (demo || !v.demo)).length;
 }
 window.realOpenVotes = realOpenVotes;
-function showTab(id) { TAB = id; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+function openMenu() {
+  const d = $('#drawer'), b = $('#drawerBg'), m = $('#menuBtn'); if (!d) return;
+  renderTabs();
+  d.classList.add('open'); if (b) b.classList.add('open'); if (m) m.classList.add('on');
+  if (document.body) document.body.style.overflow = 'hidden';
+  MENU_OPEN = true;
+}
+function closeMenu() {
+  const d = $('#drawer'), b = $('#drawerBg'), m = $('#menuBtn'); if (!d) return;
+  d.classList.remove('open'); if (b) b.classList.remove('open'); if (m) m.classList.remove('on');
+  if (document.body) document.body.style.overflow = '';
+  MENU_OPEN = false;
+}
+function toggleMenu() { if (MENU_OPEN) closeMenu(); else openMenu(); }
+window.openMenu = openMenu; window.closeMenu = closeMenu; window.toggleMenu = toggleMenu;
+
+function showTab(id) {
+  closeMenu();
+  TAB = id; render(); window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 window.showTab = showTab;
 
 function render() {
@@ -107,9 +144,8 @@ function viewAbout() {
   return `
   <div class="hero card" style="padding:20px">
     <div class="row between" style="align-items:flex-start;gap:18px">
-      <div style="flex:1 1 560px;max-width:640px">
-        <div class="ks-logo" style="margin-bottom:12px" title="Контейнерный Союз — наведите, и название развернётся из букв"><span class="vh">Контейнерный Союз</span><span class="ks-ship"><span class="ks-bridge"></span><span class="ks-box">К</span><span class="ks-word" style="--n:11"><i style="--i:0;--w:.62em">о</i><i style="--i:1;--w:.62em">н</i><i style="--i:2;--w:.52em">т</i><i style="--i:3;--w:.56em">е</i><i style="--i:4;--w:.56em">й</i><i style="--i:5;--w:.62em">н</i><i style="--i:6;--w:.56em">е</i><i style="--i:7;--w:.46em">р</i><i style="--i:8;--w:.62em">н</i><i style="--i:9;--w:.72em">ы</i><i style="--i:10;--w:.56em">й</i></span><span class="ks-box">С</span><span class="ks-word" style="--n:3"><i style="--i:0;--w:.62em">о</i><i style="--i:1;--w:.68em">ю</i><i style="--i:2;--w:.52em">з</i></span></span><span class="ks-hull"></span><span class="ks-sea"></span></div>
-        <h2 style="font-size:25px">Контейнерный Союз</h2>
+      <div style="flex:1 1 560px;max-width:680px">
+        <h2 style="font-size:26px">Контейнерный Союз</h2>
         <div class="sub" style="font-size:14.5px">Открытая отраслевая платформа контейнерных автоперевозок России: экономически обоснованная ставка, рейтинг добросовестности, биржа заявок и отраслевое саморегулирование через Совет перевозчиков.</div>
         <div class="chips" style="margin-top:14px">
           <button class="chip" onclick="showTab('calc')">🧮 Рассчитать ставку</button>
@@ -206,8 +242,9 @@ function viewAbout() {
       </div>
       <div class="card" style="margin-top:16px">
         <h3>Навигация</h3>
-        <p class="mini">Логотип <b>КС</b> нарисован как контейнеровоз: из буквы <b>К</b> разворачивается «онтейнерный», из буквы <b>С</b> — «оюз», и получается полное название. Наведите курсор на логотип (или коснитесь его) — увидите.</p>
-        <p class="mini" style="margin-top:8px">Вкладки переключаются клавишами <b>←</b> и <b>→</b>, на телефоне — свайпом влево/вправо по экрану. Горизонтальной прокрутки в меню больше нет: на узком экране вкладки переносятся на вторую строку. Кнопка <b>↑</b> в правом нижнем углу возвращает наверх.</p>
+        <p class="mini">Разделы платформы вынесены в меню слева: нажмите кнопку <b>☰</b> в левом верхнем углу — панель выедет поверх страницы и не отнимает место у содержимого. Название текущего раздела видно на самой кнопке.</p>
+        <p class="mini" style="margin-top:8px">Логотип <b>КС</b> нарисован как контейнеровоз: из буквы <b>К</b> разворачивается «онтейнерный», из буквы <b>С</b> — «оюз», и получается полное название. Наведите курсор (или коснитесь логотипа) — увидите. Логотип есть только в шапке.</p>
+        <p class="mini" style="margin-top:8px">Разделы переключаются клавишами <b>←</b> и <b>→</b>, на телефоне — свайпом влево/вправо по экрану. Меню закрывается клавишей <b>Esc</b>, кнопкой <b>✕</b>, кликом по затемнению или свайпом влево. Кнопка <b>↑</b> в правом нижнем углу возвращает наверх.</p>
       </div>
     </div>
   </div>`;
@@ -758,11 +795,27 @@ window.copyLink = copyLink;
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || '') || t.isContentEditable) return;
     const mb = $('#modalBg');
     if (mb && mb.classList.contains('open')) { if (e.key === 'Escape') closeModal(); return; }
+    if (MENU_OPEN) {
+      if (e.key === 'Escape') closeMenu();
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') return;   /* пока меню открыто, разделы не листаем */
+      return;
+    }
     if (e.key === 'ArrowRight') shiftTab(1);
     else if (e.key === 'ArrowLeft') shiftTab(-1);
   });
 
-  /* свайп по содержимому: следующая/предыдущая вкладка */
+  /* свайп влево по меню закрывает его */
+  const dr = $('#drawer');
+  if (dr && dr.addEventListener) {
+    let mx = 0, my = 0;
+    dr.addEventListener('touchstart', e => { if (e.touches.length === 1) { mx = e.touches[0].clientX; my = e.touches[0].clientY; } }, { passive: true });
+    dr.addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].clientX - mx, dy = e.changedTouches[0].clientY - my;
+      if (dx < -60 && Math.abs(dy) < 60) closeMenu();
+    }, { passive: true });
+  }
+
+  /* свайп по содержимому: следующий/предыдущий раздел */
   const v = $('#view');
   if (v && v.addEventListener) {
     let x0 = 0, y0 = 0, t0 = 0, armed = false;
@@ -796,6 +849,7 @@ window.copyLink = copyLink;
     const y = window.pageYOffset || h.scrollTop || 0;
     if (pb) pb.style.width = (max > 0 ? Math.min(100, y / max * 100) : 0) + '%';
     if (tt && tt.classList) tt.classList.toggle('show', y > 520);
+    if (document.body && document.body.classList) document.body.classList.toggle('scrolled', y > 60);
   };
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', onScroll);
