@@ -674,9 +674,8 @@ function renderIndicators() {
   const html = rows.map(r =>
     '<span class="i ' + r.cls + '" title="' + esc(r.s) + '">' + esc(r.l) + ' <b>' + r.v + '</b>' +
     (r.note ? '<em>' + esc(r.note) + '</em>' : '') + '</span>').join('') +
-    '<span class="i src">сетка <b>' + esc(DB.tariff.version) + '</b>' +
-    (DB.tariff.approved ? ', утв. ' + dt(DB.tariff.approved) : '') +
-    (DB.tariff.approvedBy ? ' · ' + esc(DB.tariff.approvedBy) : '') + '</span>';
+    '<span class="i src" title="Основание сетки: ' + esc(DB.tariff.approvedBy || '—') + '">сетка <b>' +
+    esc(DB.tariff.version) + '</b>' + (DB.tariff.approved ? ', утв. ' + dt(DB.tariff.approved) : '') + '</span>';
   if (el.innerHTML !== html) el.innerHTML = html;
 }
 const renderTicker = renderIndicators;   // прежнее имя — для совместимости

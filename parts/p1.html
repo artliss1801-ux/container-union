@@ -205,6 +205,12 @@ footer{border-top:1px solid var(--line);color:var(--dim);font-size:12.5px;paddin
 .indic .i.cur b{color:#8fd3ff}
 .indic .i.src{border-color:transparent;background:none;padding-left:2px}
 .indic .i.src b{color:var(--mut)}
+@media (max-width:640px){
+  .indic-in{gap:3px 6px;padding:6px 10px}
+  .indic .i{font-size:11px;padding:1px 7px}
+  .indic .i em{display:none}
+  .indic .i.src{display:none}
+}
 /* 3. Вкладки: без горизонтальной прокрутки, подчёркивание с анимацией */
 .tabs-in button{position:relative;border-radius:10px 10px 0 0;transition:color .2s,background .2s,transform .15s}
 .tabs-in button:hover{background:rgba(62,166,255,.07)}
