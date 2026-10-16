@@ -258,7 +258,6 @@ window.viewAbout = viewAbout;
 let CALC = null;
 function viewCalc() {
   const t = DB.tariff.val;
-  const opts = CITIES.map(c => '<option>' + c[0] + '</option>').join('');
   const modes = [['импорт', 'Импорт (порт/терминал → грузополучатель)'], ['экспорт', 'Экспорт (грузоотправитель → порт/терминал)'], ['внутрироссия', 'Внутрироссия (терминал → терминал)'], ['транзит', 'Транзит / иное']];
   return `
   <div class="grid g23">
@@ -268,8 +267,17 @@ function viewCalc() {
         <div class="sub">Расчёт по тарифной сетке платформы <b>${esc(DB.tariff.version)}</b> (утв. ${dt(DB.tariff.approved)}, основание: ${esc(DB.tariff.approvedBy)}). Сетка меняется только решениями Совета перевозчиков.</div>
         <div class="grid g2">
           <div>
-            <div class="field"><label>Пункт отправления</label><select id="c_from">${opts}</select></div>
-            <div class="field"><label>Пункт назначения</label><select id="c_to">${opts}</select></div>
+            <div class="field"><label>Маршрут: пункты по порядку</label>
+              <div class="mini" style="margin:-2px 0 6px">Начните вводить название — подсказки берутся из базы населённых пунктов России (${SETTLEMENTS.length} городов и посёлков). Между пунктами можно добавить таможню, СВХ или депо.</div>
+              <div id="routePoints"></div>
+              <div class="row" style="gap:6px;margin:6px 0 2px">
+                <button class="btn sm" onclick="addPoint('load')">＋ Погрузка</button>
+                <button class="btn sm" onclick="addPoint('unload')">＋ Выгрузка</button>
+                <button class="btn sm" onclick="addPoint('customs')">＋ Таможня</button>
+                <button class="btn sm" onclick="addPoint('svh')">＋ СВХ / терминал</button>
+                <button class="btn sm" onclick="addPoint('depot')">＋ Депо (порожний)</button>
+              </div>
+            </div>
             <div class="mini" style="margin:2px 0 6px">Частые плечи — в один клик:</div>
             <div class="chips" style="margin-bottom:10px">
               <button class="chip" onclick="calcPreset('Новороссийск','Москва')">Новороссийск → Москва</button>
@@ -349,15 +357,142 @@ function viewCalc() {
     </div>
   </div>`;
 }
+/* ---------- маршрут: точки, автоподбор населённых пунктов, расстояния ---------- */
+const POINT_KINDS = [
+  { k: 'load',    label: 'Погрузка',        fee: 0,    hours: 2 },
+  { k: 'unload',  label: 'Выгрузка',        fee: 0,    hours: 2 },
+  { k: 'customs', label: 'Таможня',         fee: 25000, hours: 6 },
+  { k: 'svh',     label: 'СВХ / терминал',  fee: 6000,  hours: 4 },
+  { k: 'depot',   label: 'Депо (порожний)', fee: 0,     hours: 1 }
+];
+function pointKind(k) { return POINT_KINDS.find(x => x.k === k) || POINT_KINDS[0]; }
+let POINTS = Store.get('ks_points', null) || [
+  { kind: 'load', name: 'Новороссийск', fee: 0, hours: 2, fio: true },
+  { kind: 'unload', name: 'Москва', fee: 0, hours: 2, fio: true }
+];
+if (!Array.isArray(POINTS) || POINTS.length < 2) POINTS = [{ kind: 'load', name: 'Новороссийск', fee: 0, hours: 2, fio: true }, { kind: 'unload', name: 'Москва', fee: 0, hours: 2, fio: true }];
+function savePoints() { Store.set('ks_points', POINTS); }
+
+function renderPoints() {
+  const box = $('#routePoints'); if (!box) return;
+  box.innerHTML = POINTS.map((p, i) => {
+    const k = pointKind(p.kind);
+    const fixed = i === 0 || i === POINTS.length - 1;
+    const kindSel = fixed
+      ? '<span class="badge ' + (i === 0 ? 'b-ok' : 'b-info') + '">' + (i === 0 ? 'Погрузка' : 'Выгрузка') + '</span>'
+      : '<select class="inp" style="max-width:150px" onchange="setPointKind(' + i + ', this.value)">' +
+        POINT_KINDS.map(x => '<option value="' + x.k + '"' + (x.k === p.kind ? ' selected' : '') + '>' + x.label + '</option>').join('') + '</select>';
+    return '<div class="route-row" data-i="' + i + '">' +
+      '<span class="mini" style="min-width:18px;text-align:right">' + (i + 1) + '.</span>' + kindSel +
+      '<div class="ac-wrap"><input class="inp ac-input" id="' + (i === 0 ? 'c_from' : i === POINTS.length - 1 ? 'c_to' : 'pt_' + i) + '" autocomplete="off" ' +
+        'data-i="' + i + '" value="' + esc(p.name || '') + '" placeholder="Начните вводить название…"></div>' +
+      '<input class="inp" style="max-width:110px" inputmode="decimal" title="Дополнительные расходы по точке, ₽" value="' + (p.fee ? fmt(p.fee) : '') + '" placeholder="₽" oninput="setPointFee(' + i + ', this.value)">' +
+      '<input class="inp" style="max-width:80px" inputmode="decimal" title="Время на точке, часов (простой)" value="' + (p.hours || 0) + '" oninput="setPointHours(' + i + ', this.value)">' +
+      (fixed ? '<span style="width:32px"></span>' : '<button class="btn sm bad" title="Убрать точку" onclick="removePoint(' + i + ')">✕</button>') +
+      '</div>';
+  }).join('') +
+  '<div class="mini" style="margin-top:4px" id="routeInfo"></div>';
+  box.querySelectorAll('.ac-input').forEach(inp => attachAutocomplete(inp));
+  updateRouteInfo();
+}
+function setPointKind(i, kind) { POINTS[i].kind = kind; const k = pointKind(kind); if (!POINTS[i].fee) POINTS[i].fee = k.fee; if (!POINTS[i].hours) POINTS[i].hours = k.hours; savePoints(); renderPoints(); calcDistance(true); calcRun(true); }
+function setPointFee(i, v) { POINTS[i].fee = num(v); savePoints(); calcRun(true); }
+function setPointHours(i, v) { POINTS[i].hours = num(v); savePoints(); calcRun(true); }
+function setPointName(i, name) {
+  POINTS[i].name = name; const st = findSettlement(name);
+  POINTS[i].lat = st ? st[3] : 0; POINTS[i].lon = st ? st[4] : 0; POINTS[i].known = !!st;
+  savePoints(); updateRouteInfo(); calcDistance(true); calcRun(true);
+}
+function addPoint(kind) {
+  const k = pointKind(kind || 'customs');
+  /* новая точка вставляется предпоследней — перед выгрузкой */
+  POINTS.splice(Math.max(1, POINTS.length - 1), 0, { kind: k.k, name: '', fee: k.fee, hours: k.hours });
+  savePoints(); renderPoints();
+  const inp = $(`#routePoints .ac-input[data-i="${POINTS.length - 2}"]`); if (inp) inp.focus();
+  toast('Точка добавлена: <b>' + k.label + '</b>. Укажите населённый пункт — подсказки появятся при вводе.', 'ok');
+}
+function removePoint(i) {
+  if (POINTS.length <= 2) return;
+  POINTS.splice(i, 1); savePoints(); renderPoints(); calcDistance(true); calcRun(true);
+}
+function updateRouteInfo() {
+  const el = $('#routeInfo'); if (!el) return;
+  const total = routeKm(POINTS);
+  const unknown = POINTS.filter(p => p.name && !findSettlement(p.name)).map(p => p.name);
+  const fees = POINTS.reduce((a, p) => a + num(p.fee), 0);
+  const hours = POINTS.reduce((a, p) => a + num(p.hours), 0);
+  el.innerHTML = 'Плеч: <b>' + Math.max(0, POINTS.length - 1) + '</b> · пробег по маршруту: <b>' + fmt(total) + ' км</b>' +
+    (fees ? ' · доп. расходы по точкам: <b>' + money(fees) + '</b>' : '') +
+    (hours ? ' · время на точках: <b>' + hours + ' ч</b>' : '') +
+    (unknown.length ? '<br><span style="color:var(--bad)">Нет в базе: ' + esc(unknown.join(', ')) + ' — уточните название или расстояние укажите вручную.</span>' : '');
+}
+/* ---------- автоподбор населённых пунктов ---------- */
+function attachAllAutocomplete(root) {
+  const scope = root && root.querySelectorAll ? root : document;
+  scope.querySelectorAll('.ac-input[data-ac]:not([data-ac-on])').forEach(inp => {
+    inp.setAttribute('data-ac-on', '1');
+    attachAutocomplete(inp);
+  });
+}
+window.attachAllAutocomplete = attachAllAutocomplete;
+
+function attachAutocomplete(inp) {
+  const hasIdx = inp.dataset.i !== undefined && inp.dataset.i !== '';
+  const i = hasIdx ? Number(inp.dataset.i) : null;
+  const wrap = inp.parentElement;
+  let box = null, active = -1, list = [];
+  const close = () => { if (box) { box.remove(); box = null; } active = -1; };
+  const paint = () => {
+    if (!box) return;
+    box.innerHTML = list.length ? list.map((r, n) =>
+      '<div class="ac-item' + (n === active ? ' on' : '') + '" data-n="' + n + '">' + esc(settLabel(r)) + '</div>').join('')
+      : '<div class="ac-item mini">Ничего не нашлось — можно ввести название вручную</div>';
+    box.querySelectorAll('.ac-item[data-n]').forEach(el => el.addEventListener('mousedown', ev => {
+      ev.preventDefault(); pick(Number(el.dataset.n));
+    }));
+  };
+  const open = () => {
+    list = suggestSettlements(inp.value, 8);
+    if (!box) { box = document.createElement('div'); box.className = 'ac-box'; wrap.appendChild(box); }
+    active = -1; paint();
+  };
+  const pick = n => {
+    const r = list[n]; if (!r) return;
+    inp.value = settName(r); close();
+    if (i === null) inp.dispatchEvent(new Event('change', { bubbles: true }));   // обычное поле: сообщаем форме
+    else { setPointName(i, settName(r)); calcPulse(); }
+  };
+  inp.addEventListener('input', () => { open(); });
+  inp.addEventListener('focus', () => { open(); });
+  inp.addEventListener('blur', () => {
+    setTimeout(close, 120);
+    if (!inp.value) return;
+    if (i === null) inp.dispatchEvent(new Event('change', { bubbles: true }));
+    else setPointName(i, inp.value);
+  });
+  inp.addEventListener('keydown', ev => {
+    if (!box) { if (ev.key === 'ArrowDown') open(); return; }
+    if (ev.key === 'ArrowDown') { active = Math.min(list.length - 1, active + 1); paint(); ev.preventDefault(); }
+    else if (ev.key === 'ArrowUp') { active = Math.max(0, active - 1); paint(); ev.preventDefault(); }
+    else if (ev.key === 'Enter') { if (active >= 0) { pick(active); ev.preventDefault(); } else { close(); } }
+    else if (ev.key === 'Escape') { close(); }
+  });
+}
 function calcDistance(silent) {
-  const km = roadKm($('#c_from').value, $('#c_to').value);
-  if (!km) { if (!silent) toast('Не удалось определить маршрут', 'bad'); return; }
+  const km = routeKm(POINTS);
+  if (!km) { if (!silent) toast('Не удалось определить маршрут: проверьте названия пунктов', 'bad'); return; }
   $('#c_km').value = km; $('#c_empty').value = km;
-  if (!silent) toast('Расстояние ' + $('#c_from').value + ' → ' + $('#c_to').value + ': <b>' + fmt(km) + ' км</b> (справочно)');
+  const fees = POINTS.reduce((a, p) => a + num(p.fee), 0);
+  if (!silent) toast('Маршрут ' + esc(POINTS[0].name) + ' → ' + esc(POINTS[POINTS.length - 1].name) + ': <b>' + fmt(km) + ' км</b>' +
+    (fees ? ', дополнительные расходы по точкам ' + money(fees) : '') + ' (справочно)');
 }
 function calcInputs() {
   const inp = {
-    from: $('#c_from') ? $('#c_from').value : 'Новороссийск', to: $('#c_to') ? $('#c_to').value : 'Москва',
+    points: POINTS.map(p => ({ kind: p.kind, name: p.name, fee: num(p.fee), hours: num(p.hours) })),
+    pointsFee: POINTS.reduce((a, p) => a + num(p.fee), 0),
+    pointsHours: POINTS.reduce((a, p) => a + num(p.hours), 0),
+    from: POINTS[0] ? POINTS[0].name : ($('#c_from') ? $('#c_from').value : 'Новороссийск'),
+    to: POINTS[POINTS.length - 1] ? POINTS[POINTS.length - 1].name : ($('#c_to') ? $('#c_to').value : 'Москва'),
     km: $('#c_km').value, empty: $('#c_emptyOn').checked, emptyKm: $('#c_empty').value,
     units: $('#c_units').value, type: $('#c_type').value, weight: $('#c_weight').value,
     mode: $('#c_mode').value, days: $('#c_days').value, detention: $('#c_detention').value,
@@ -371,7 +506,9 @@ function calcInputs() {
 }
 function calcRun(silent) {
   const inp = calcInputs();
-  const r = calc(inp); CALC = { ...r, inp, at: todayISO(), route: inp.from + ' → ' + inp.to, type: inp.type };
+  const r = calc(inp);
+  const via = (inp.points || []).slice(1, -1).map(x => (x.kind === 'customs' ? 'таможня ' : x.kind === 'svh' ? 'СВХ ' : x.kind === 'depot' ? 'депо ' : '') + x.name).filter(Boolean);
+  CALC = { ...r, inp, at: todayISO(), route: inp.from + ' → ' + (via.length ? 'через ' + via.join(', ') + ' → ' : '') + inp.to, type: inp.type };
   const badge = r.belowFloor ? '<span class="badge b-bad">ниже минимальной ставки Совета</span>' : (r.vsMarket < -12 ? '<span class="badge b-warn">ниже рынка более 12%</span>' : '<span class="badge b-ok">в рыночном коридоре</span>');
   $('#calcOut').innerHTML = `
     <div class="result">
@@ -406,7 +543,7 @@ function calcRun(silent) {
     </div>`;
   if (!silent) toast('Расчёт выполнен: <b>' + money(r.base) + '</b>', 'ok');
 }
-function calcAfterRender() { if (CALC) calcRun(true); }
+function calcAfterRender() { renderPoints(); if (CALC) calcRun(true); }
 function calcSave() {
   if (!CALC) calcRun();
   DB.calcs.push({ at: todayISO(), route: CALC.route, type: CALC.type, km: CALC.km, base: Math.round(CALC.base), perKm: CALC.perKm, inp: CALC.inp });
@@ -527,7 +664,8 @@ window.carrierCard = carrierCard;
 function bestCarriers(load) {
   const scored = DB.carriers.filter(c => c.status === 'verified').map(c => {
     const r = rating(c);
-    const sameRegion = c.region === (cityByName(load.from) || [])[3] ? 8 : 0;
+    const st = findSettlement(load.from);
+    const sameRegion = (st && (settOkrug(st) === c.region)) ? 8 : 0;
     const typeOk = c.types.some(t => load.type.startsWith(t.replace('′HC', '′'))) ? 8 : 0;
     const spare = Math.min(10, c.fleet / 6);
     return { c, s: Math.round((r.score * 0.78 + sameRegion + typeOk + spare) * 10) / 10, r };
@@ -619,12 +757,12 @@ function placeBid(id) {
   }
 }
 function loadForm() {
-  const opts = CITIES.map(c => '<option>' + c[0] + '</option>').join('');
+
   openModal('Размещение заявки на перевозку', `
     <div class="note">Заявки размещают грузовладельцы, экспедиторы и агенты. Для юридической чистоты заявка содержит существенные условия будущего договора-перевозки.</div>
     <div class="grid g2" style="margin-top:12px">
-      <div class="field"><label>Откуда</label><select id="n_from">${opts}</select></div>
-      <div class="field"><label>Куда</label><select id="n_to">${opts}</select></div>
+      <div class="field"><label>Откуда</label>${settlementField('n_from', 'Новороссийск')}</div>
+      <div class="field"><label>Куда</label>${settlementField('n_to', 'Москва')}</div>
       <div class="field"><label>Тип контейнера</label><select id="n_type"><option>20′</option><option selected>40′HC</option><option>40′</option><option>45′HC</option><option>20′ (реф)</option><option>40′ (реф)</option></select></div>
       <div class="field"><label>Схема</label><select id="n_mode"><option value="импорт">Импорт</option><option value="экспорт">Экспорт</option><option value="внутрироссия">Внутрироссия</option><option value="транзит">Транзит</option></select></div>
       <div class="field"><label>Вес брутто, т</label><input type="number" id="n_weight" value="24"></div>
@@ -661,21 +799,43 @@ function renderIndicators() {
   const el = $('#indicIn'); if (!el || !DB || !DB.tariff) return;
   const t = DB.tariff.val || {};
   const ind = (DB.settings && DB.settings.indicators) || {};
-  const asOf = ind.asOf ? dt(ind.asOf) : '';
-  const src = ind.src || 'ЦБ РФ';
-  const rows = [
-    { l: 'ДТ', v: fmt2(t.fuelPrice) + ' ₽/л', s: 'Росстат, средняя по РФ', cls: '' },
-    { l: '«Платон»', v: fmt2(t.platon) + ' ₽/км', s: 'ПП РФ № 843', cls: '' },
-    { l: 'Рыночный ориентир', v: fmt2(t.marketPerKm) + ' ₽/км', s: DB.settings && DB.settings.demoCouncil ? 'ведёт Администрация (переходный период)' : 'решение Совета / Администрации', cls: '' },
-    num(ind.usd) ? { l: 'USD', v: fmt2(num(ind.usd)) + ' ₽', s: src, note: (src.split(' ')[0] || 'ЦБ') + (asOf ? ', ' + asOf : ''), cls: 'cur' } : null,
-    num(ind.cny) ? { l: 'CNY', v: fmt2(num(ind.cny)) + ' ₽', s: src, note: '', cls: 'cur' } : null,
-    num(ind.eur) ? { l: 'EUR', v: fmt2(num(ind.eur)) + ' ₽', s: src, note: '', cls: 'cur' } : null
-  ].filter(Boolean);
-  const html = rows.map(r =>
-    '<span class="i ' + r.cls + '" title="' + esc(r.s) + '">' + esc(r.l) + ' <b>' + r.v + '</b>' +
-    (r.note ? '<em>' + esc(r.note) + '</em>' : '') + '</span>').join('') +
-    '<span class="i src" title="Основание сетки: ' + esc(DB.tariff.approvedBy || '—') + '">сетка <b>' +
-    esc(DB.tariff.version) + '</b>' + (DB.tariff.approved ? ', утв. ' + dt(DB.tariff.approved) : '') + '</span>';
+  const item = (label, value, note, title, cls) =>
+    '<span class="i ' + (cls || '') + '"' + (title ? ' title="' + esc(title) + '"' : '') + '>' +
+    '<span class="l">' + esc(label) + '</span><b>' + esc(value) + '</b>' +
+    (note ? '<em>' + esc(note) + '</em>' : '') + '</span>';
+  const rows = [];
+
+  /* ДТ и «Платон» — показатели рынка из открытых источников; если открытых данных ещё нет,
+     показываем значение тарифной сетки, чтобы строка не оставалась пустой. */
+  if (num(ind.dt) > 0) {
+    rows.push(item('ДТ', fmt2(ind.dt) + ' ₽/л', 'Росстат' + (ind.dtAsOf ? ', ' + dt(ind.dtAsOf) : ''),
+      'Средняя цена дизельного топлива по РФ из открытой сводки' + (ind.dtSrc ? ' (' + ind.dtSrc + ')' : '') + '. В расчёте ставки — значение тарифной сетки: ' + fmt2(t.fuelPrice) + ' ₽/л, оно меняется только решением.', 'auto'));
+  } else {
+    rows.push(item('ДТ', fmt2(t.fuelPrice) + ' ₽/л', 'по тарифной сетке', 'Значение тарифной сетки платформы: ' + fmt2(t.fuelPrice) + ' ₽/л'));
+  }
+  if (num(ind.platon) > 0) {
+    rows.push(item('«Платон»', fmt2(ind.platon) + ' ₽/км', 'открытые данные' + (ind.platonAsOf ? ', ' + dt(ind.platonAsOf) : ''),
+      'Тариф системы «Платон» из открытой публикации' + (ind.platonSrc ? ' (' + ind.platonSrc + ')' : '') + '. В расчёте ставки — значение тарифной сетки: ' + fmt2(t.platon) + ' ₽/км.', 'auto'));
+  } else {
+    rows.push(item('«Платон»', fmt2(t.platon) + ' ₽/км', 'по тарифной сетке', 'Значение тарифной сетки платформы: ' + fmt2(t.platon) + ' ₽/км'));
+  }
+
+  /* Рыночный ориентир — решение Совета (после выборов) либо Администрации (переходный период) */
+  rows.push(item('Рыночный ориентир', fmt2(t.marketPerKm) + ' ₽/км',
+    (DB.settings && DB.settings.demoCouncil) ? 'ведёт Администрация' : 'решение Совета / Администрации',
+    'Меняется только проектом решения: в переходный период утверждает Администрация, после выборов — голосование Совета.'));
+
+  /* Курсы — официальные, из открытого источника, без ручного ввода */
+  if (num(ind.usd) > 0) rows.push(item('USD', fmt2(ind.usd) + ' ₽', (ind.src || 'ЦБ РФ') + (ind.asOf ? ', ' + dt(ind.asOf) : ''), 'Официальный курс из открытого источника — обновляется автоматически', 'cur'));
+  if (num(ind.cny) > 0) rows.push(item('CNY', fmt2(ind.cny) + ' ₽', ind.src || 'ЦБ РФ', 'Официальный курс из открытого источника — обновляется автоматически', 'cur'));
+  if (num(ind.eur) > 0) rows.push(item('EUR', fmt2(ind.eur) + ' ₽', ind.src || 'ЦБ РФ', 'Официальный курс из открытого источника — обновляется автоматически', 'cur'));
+
+  /* Значения тарифной сетки: только решением — показываем отдельно от рыночных показателей */
+  rows.push(item('сетка ' + DB.tariff.version, 'ДТ ' + fmt2(t.fuelPrice) + ' · «Платон» ' + fmt2(t.platon) + ' ₽/км',
+    DB.tariff.approved ? 'утв. ' + dt(DB.tariff.approved) : '',
+    'Основание сетки: ' + (DB.tariff.approvedBy || '—') + '. Любое значение меняется проектом решения.', 'grid'));
+
+  const html = rows.join('<span class="dot">·</span>');
   if (el.innerHTML !== html) el.innerHTML = html;
 }
 const renderTicker = renderIndicators;   // прежнее имя — для совместимости
@@ -685,6 +845,7 @@ const renderTicker = renderIndicators;   // прежнее имя — для с�
 let IO_REVEAL = null;
 function decorateView() {
   const v = $('#view'); if (!v || !v.querySelectorAll) return;
+  attachAllAutocomplete(v);
   if ('IntersectionObserver' in window) {
     if (!IO_REVEAL) IO_REVEAL = new IntersectionObserver(list => {
       list.forEach(x => { if (x.isIntersecting) { x.target.classList.add('on'); IO_REVEAL.unobserve(x.target); } });
@@ -722,10 +883,15 @@ function calcLive() {
 function calcPreset(from, to) {
   const f = $('#c_from'), t = $('#c_to'); if (!f || !t) return;
   f.value = from; t.value = to;
+  /* пресет — это плечо «погрузка → выгрузка»: дополнительные точки убираем */
+  POINTS = [{ kind: 'load', name: from, fee: 0, hours: 2 }, { kind: 'unload', name: to, fee: 0, hours: 2 }];
+  savePoints(); renderPoints();
   calcDistance(true); calcRun(true); calcPulse();
   toast('Плечо подставлено: <b>' + esc(from) + ' → ' + esc(to) + '</b> — ставка пересчитана', 'ok');
 }
 window.calcPreset = calcPreset;
+[renderPoints, addPoint, removePoint, setPointKind, setPointFee, setPointHours, setPointName, attachAutocomplete, updateRouteInfo, suggestSettlements, findSettlement, routeKm]
+  .forEach(f => window[f.name] = f);
 
 /* ---------- реестр: живой поиск по таблице ---------- */
 function carrierSearch(q) {
@@ -843,7 +1009,7 @@ window.copyLink = copyLink;
   document.addEventListener('input', e => { const id = (e.target && e.target.id) || ''; if (/^c_/.test(id)) calcLive(); });
   document.addEventListener('change', e => {
     const id = (e.target && e.target.id) || '';
-    if (id === 'c_from' || id === 'c_to') { calcDistance(true); calcRun(true); calcPulse(); }
+    if (id === 'c_from' || id === 'c_to') { setPointName(id === 'c_from' ? 0 : POINTS.length - 1, e.target.value); calcPulse(); }
     else if (/^c_/.test(id)) calcLive();
   });
 

@@ -32,74 +32,69 @@ const Store = (() => {
 })();
 
 /* ---------- справочник городов (координаты для справочного расчёта плеча) ---------- */
-const CITIES = [
-  ['Москва', 55.755, 37.617, 'ЦФО', 'терминал'],
-  ['Санкт-Петербург', 59.938, 30.314, 'СЗФО', 'порт'],
-  ['Новороссийск', 44.724, 37.768, 'ЮФО', 'порт'],
-  ['Калининград', 54.710, 20.452, 'СЗФО', 'порт'],
-  ['Мурманск', 68.958, 33.083, 'СЗФО', 'порт'],
-  ['Архангельск', 64.539, 40.518, 'СЗФО', 'порт'],
-  ['Екатеринбург', 56.838, 60.605, 'УФО', 'терминал'],
-  ['Казань', 55.796, 49.106, 'ПФО', 'терминал'],
-  ['Нижний Новгород', 56.326, 44.006, 'ПФО', 'терминал'],
-  ['Самара', 53.196, 50.150, 'ПФО', 'терминал'],
-  ['Уфа', 54.738, 55.972, 'ПФО', 'терминал'],
-  ['Челябинск', 55.164, 61.436, 'УФО', 'терминал'],
-  ['Пермь', 58.010, 56.250, 'ПФО', 'терминал'],
-  ['Волгоград', 48.719, 44.502, 'ЮФО', 'терминал'],
-  ['Ростов-на-Дону', 47.231, 39.723, 'ЮФО', 'терминал'],
-  ['Краснодар', 45.035, 38.975, 'ЮФО', 'терминал'],
-  ['Воронеж', 51.661, 39.200, 'ЦФО', 'терминал'],
-  ['Саратов', 51.533, 46.034, 'ПФО', 'терминал'],
-  ['Тюмень', 57.153, 65.534, 'УФО', 'терминал'],
-  ['Омск', 54.992, 73.368, 'СФО', 'терминал'],
-  ['Новосибирск', 55.030, 82.920, 'СФО', 'терминал'],
-  ['Барнаул', 53.355, 83.771, 'СФО', 'терминал'],
-  ['Красноярск', 56.010, 92.852, 'СФО', 'терминал'],
-  ['Иркутск', 52.286, 104.280, 'СФО', 'терминал'],
-  ['Улан-Удэ', 51.828, 107.606, 'ДФО', 'терминал'],
-  ['Чита', 52.034, 113.500, 'ДФО', 'терминал'],
-  ['Хабаровск', 48.482, 135.083, 'ДФО', 'терминал'],
-  ['Владивосток', 43.116, 131.885, 'ДФО', 'порт'],
-  ['Ярославль', 57.626, 39.874, 'ЦФО', 'город'],
-  ['Тула', 54.196, 37.618, 'ЦФО', 'город'],
-  ['Брянск', 53.243, 34.363, 'ЦФО', 'город'],
-  ['Смоленск', 54.782, 32.045, 'ЦФО', 'город'],
-  ['Тверь', 56.858, 35.911, 'ЦФО', 'город'],
-  ['Владимир', 56.136, 40.397, 'ЦФО', 'город'],
-  ['Рязань', 54.626, 39.691, 'ЦФО', 'город'],
-  ['Липецк', 52.608, 39.600, 'ЦФО', 'город'],
-  ['Белгород', 50.595, 36.587, 'ЦФО', 'город'],
-  ['Курск', 51.737, 36.187, 'ЦФО', 'город'],
-  ['Тамбов', 52.722, 41.452, 'ЦФО', 'город'],
-  ['Пенза', 53.195, 45.018, 'ПФО', 'город'],
-  ['Ульяновск', 54.318, 48.403, 'ПФО', 'город'],
-  ['Чебоксары', 56.143, 47.251, 'ПФО', 'город'],
-  ['Киров', 58.603, 49.668, 'ПФО', 'город'],
-  ['Ижевск', 56.852, 53.211, 'ПФО', 'город'],
-  ['Оренбург', 51.768, 55.097, 'ПФО', 'город'],
-  ['Вологда', 59.220, 39.891, 'СЗФО', 'город'],
-  ['Петрозаводск', 61.789, 34.346, 'СЗФО', 'город'],
-  ['Астрахань', 46.349, 48.040, 'ЮФО', 'город'],
-  ['Сочи', 43.602, 39.734, 'ЮФО', 'город'],
-  ['Ставрополь', 45.043, 41.969, 'СКФО', 'город'],
-  ['Пятигорск', 44.049, 43.059, 'СКФО', 'город'],
-  ['Махачкала', 42.977, 47.505, 'СКФО', 'порт'],
-  ['Сургут', 61.254, 73.396, 'УФО', 'город'],
-  ['Орск', 51.205, 58.545, 'ПФО', 'город'],
-  ['Томск', 56.484, 84.948, 'СФО', 'город'],
-  ['Кемерово', 55.354, 86.087, 'СФО', 'город'],
-  ['Владимир (Ковров)', 56.357, 41.320, 'ЦФО', 'город']
-];
-const cityByName = n => CITIES.find(c => c[0] === n);
+/* ---------- населённые пункты: встроенная база России + дополнения из базы платформы ----------
+   SETTLEMENTS (встроенная база, 1100+ городов с координатами) описана в p2b.settlements.js.
+   DB.settlements — записи из таблицы settlements (добавленные участниками точки: порты, СВХ, терминалы). */
 const RAD = Math.PI / 180;
+function settlementIndex() {
+  const extra = (typeof DB !== 'undefined' && DB && Array.isArray(DB.settlements)) ? DB.settlements : [];
+  return SETTLEMENTS.concat(extra.map(s => [s.name, SETTLEMENTS_REGIONS.indexOf(s.region) >= 0 ? SETTLEMENTS_REGIONS.indexOf(s.region) : SETTLEMENTS_REGIONS.length - 1,
+    Math.max(0, SETTLEMENTS_OKRUGS.indexOf(s.okrug)), Number(s.lat) || 0, Number(s.lon) || 0, Number(s.population) || 0,
+    Math.max(0, SETTLEMENTS_KINDS.indexOf(s.kind))]));
+}
+function settName(r) { return r[0]; }
+function settRegion(r) { return SETTLEMENTS_REGIONS[r[1]] || ''; }
+function settOkrug(r) { return SETTLEMENTS_OKRUGS[r[2]] || ''; }
+function settKind(r) { return SETTLEMENTS_KINDS[r[6]] || 'город'; }
+function settLabel(r) {
+  return r[0] + (settRegion(r) ? ', ' + settRegion(r) + ' (' + settOkrug(r) + ')' : '') +
+    (r[5] ? ' · ' + fmt(r[5]) + ' жит.' : '') + (settKind(r) === 'порт' ? ' · порт' : settKind(r) === 'посёлок' ? ' · посёлок' : '');
+}
+/* поиск по названию: сначала точное, затем «начинается с», затем вхождение (без учёта регистра) */
+function findSettlement(name) {
+  const q = String(name || '').trim().toLowerCase();
+  if (!q) return null;
+  const list = settlementIndex();
+  const clean = s => s.toLowerCase().replace(/\s*\(.*?\)\s*/g, ' ').replace(/^(г|гор|пос|пгт|рп|с)\.?\s+/,'').trim();
+  return list.find(r => clean(settName(r)) === q)
+      || list.find(r => clean(settName(r)).startsWith(q))
+      || list.find(r => clean(settName(r)).includes(q))
+      || null;
+}
+function suggestSettlements(query, limit) {
+  const q = String(query || '').trim().toLowerCase();
+  const list = settlementIndex().slice().sort((a, b) => b[5] - a[5]);
+  if (!q) return list.slice(0, limit || 8);
+  const starts = [], has = [], how = [];
+  for (const r of list) {
+    const n = settName(r).toLowerCase(), reg = settRegion(r).toLowerCase();
+    if (n.startsWith(q)) starts.push(r); else if (n.includes(q)) has.push(r);
+    else if (reg.startsWith(q)) how.push(r);
+    if (starts.length >= (limit || 8)) break;
+  }
+  return starts.concat(has).concat(how).slice(0, limit || 8);
+}
 function roadKm(a, b) {
-  const A = cityByName(a), B = cityByName(b); if (!A || !B) return 0;
-  const dLat = (B[1] - A[1]) * RAD, dLon = (B[2] - A[2]) * RAD;
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(A[1] * RAD) * Math.cos(B[1] * RAD) * Math.sin(dLon / 2) ** 2;
+  const A = findSettlement(a), B = findSettlement(b);
+  if (!A || !B) return 0;
+  const dLat = (B[3] - A[3]) * RAD, dLon = (B[4] - A[4]) * RAD;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(A[3] * RAD) * Math.cos(B[3] * RAD) * Math.sin(dLon / 2) ** 2;
   const straight = 2 * 6371 * Math.asin(Math.sqrt(h));
   const road = straight * 1.24 + 25;              // коэффициент извилистости дорожной сети
   return Math.max(0, Math.round(road / 5) * 5);
+}
+/* Поле ввода населённого пункта с автоподбором: используется в заявках, регистрации и маршруте.
+   Подсказки подключаются автоматически после отрисовки (decorateView → attachAllAutocomplete). */
+function settlementField(id, value, placeholder) {
+  return '<div class="ac-wrap"><input class="inp ac-input" data-ac="1" ' + (id ? 'id="' + id + '" ' : '') +
+    'autocomplete="off" value="' + esc(value || '') + '" placeholder="' + esc(placeholder || 'Начните вводить название…') + '"></div>';
+}
+/* Суммарный пробег по цепочке точек маршрута: [ {name}, {name}, … ] */
+function routeKm(points) {
+  const pts = (points || []).filter(p => p && p.name && findSettlement(p.name));
+  let km = 0;
+  for (let i = 1; i < pts.length; i++) km += roadKm(pts[i - 1].name, pts[i].name);
+  return Math.round(km / 5) * 5;
 }
 
 /* ---------- тарифная сетка (редактируется решениями Совета) ---------- */
@@ -361,7 +356,12 @@ function calc(inp) {
       extras += v; extraRows.push([label, v]);
     }
   }
-  const detention = Math.max(0, num(inp.detention) - t.detentionFree) * t.detentionRate;
+  /* дополнительные точки маршрута: таможня, СВХ/терминал, депо — расходы и время простоя */
+  const pointsFee = num(inp.pointsFee);
+  if (pointsFee > 0) { extras += pointsFee; extraRows.push(['Дополнительные точки маршрута (таможня, СВХ, терминал, депо)', pointsFee]); }
+  const busyHours = num(inp.pointsHours);
+  const freeHours = t.detentionFree * Math.max(1, (inp.points || []).filter(x => x.kind === 'load' || x.kind === 'unload').length);
+  const detention = Math.max(0, num(inp.detention) + busyHours - freeHours) * t.detentionRate;
   const overhead = (direct + extras + detention) * t.overheadPct / 100;
   push('Накладные, налоги, администрирование', overhead, `${t.overheadPct}% от прямых затрат, услуг и простоя`);
 
@@ -380,6 +380,7 @@ function calc(inp) {
 
   return {
     lines: L, extras: extras, extraRows, detention, direct, overhead, cost, k,
+    points: inp.points || [], pointsFee: pointsFee, pointsHours: busyHours,
     min, base, max, perKm, perUnit: base / units, units, km, emptyKm, kmTotal, days, mode: inp.mode,
     marketPerKm: t.marketPerKm, vsMarket: t.marketPerKm ? (perKm / t.marketPerKm - 1) * 100 : 0,
     belowFloor: floorDecision && base < floorDecision,

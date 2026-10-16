@@ -1,0 +1,45 @@
+# Ночной сбор показателей строки под шапкой: ДТ, «Платон», курсы ЦБ РФ.
+#
+# Как поставить (один раз, 1 минута, без вложений):
+#   1) GitHub → репозиторий container-union → Add file → Create new file
+#   2) Имя файла: .github/workflows/nightly-indicators.yml
+#   3) Вставьте весь текст ниже → Commit changes
+#   4) Settings → Secrets and variables → Actions → New repository secret:
+#        SUPABASE_URL          = https://nciyhaghjqddkqzuimff.supabase.co
+#        SUPABASE_SERVICE_KEY  = служебный ключ проекта (Settings → API → service_role)
+#   5) Actions → «Ночной сбор показателей» → Run workflow (проверка вручную)
+#
+# Что делает: node tools/fetch_indicators.mjs — читает открытые источники и записывает
+# значения в таблицу settings (ключ indicators). Если источник не ответил, прежнее
+# значение сохраняется. Ручной ввод показателей на платформе не нужен.
+name: Ночной сбор показателей
+
+on:
+  schedule:
+    - cron: '0 21 * * *'      # 21:00 UTC = 00:00 по Москве
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  indicators:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Забрать исходники
+        uses: actions/checkout@v4
+
+      - name: Подготовить Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Собрать показатели из открытых источников
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: node tools/fetch_indicators.mjs
+
+      - name: Отчёт в журнал задачи
+        if: always()
+        run: echo "Готово: значения в таблице settings, ключ indicators."

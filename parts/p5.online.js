@@ -151,10 +151,13 @@ async function sbLoadAll(quiet) {
   }
   if (window.renderIndicators) renderIndicators();   // строка показателей обновляется сразу после загрузки
   SB_STATE = 'ok'; sbBadge(); save(); render();
+  afterLoad();                                    // справочники и открытые источники
   if (!quiet) toast('Данные загружены из базы: ' + DB.carriers.length + ' перевозчиков, ' + DB.loads.length + ' заявок, ' + DB.votes.length + ' вопросов Совета', 'ok');
 }
 function sbRefresh() { sbSafe(sbLoadAll()); }
 window.sbRefresh = sbRefresh;
+/* после загрузки базы: подтягиваем населённые пункты и освежаем курсы из открытого источника */
+function afterLoad() { loadSettlements(); autoRefreshRates(); }
 
 /* ---------- запись (вызывается из действий платформы) ---------- */
 /* mode: 'insert' — новая запись (доступно всем); 'upsert' — изменение (только куратор) */
@@ -172,6 +175,65 @@ function sbPushVote(v) {
   sbSafe(SB.upsert('votes', [sbVote(v)]));
   sbSafe(SB.upsert('decisions', DB.decisions.slice(0, 20).map(sbDecision)));
 }
+/* ---------- открытые источники: курсы валют ЦБ РФ ----------
+   Адрес зеркала Банка России: отдаёт JSON с официальными курсами и поддерживает браузер (CORS).
+   Резерв — открытый сервис курсов. Значения показываются сразу и подписываются источником и датой. */
+const RATE_SOURCES = [
+  { url: 'https://www.cbr-xml-daily.ru/daily_json.js', name: 'ЦБ РФ', parse: d => ({
+      usd: d.Valute.USD.Value / d.Valute.USD.Nominal, eur: d.Valute.EUR.Value / d.Valute.EUR.Nominal,
+      cny: d.Valute.CNY.Value / d.Valute.CNY.Nominal, asOf: String(d.Date || '').slice(0, 10) }) },
+  { url: 'https://open.er-api.com/v6/latest/RUB', name: 'open.er-api.com', parse: d => ({
+      usd: 1 / d.rates.USD, eur: 1 / d.rates.EUR, cny: 1 / d.rates.CNY, asOf: String(d.time_last_update_utc || '').slice(5, 16) }) }
+];
+async function fetchRates() {
+  for (const src of RATE_SOURCES) {
+    try {
+      const ctrl = new AbortController(); const tid = setTimeout(() => ctrl.abort(), 9000);
+      const r = await fetch(src.url, { signal: ctrl.signal, cache: 'no-store' }); clearTimeout(tid);
+      if (!r.ok) continue;
+      const v = src.parse(await r.json());
+      if (!(v.usd > 0)) continue;
+      return { ...v, src: src.name };
+    } catch (e) { /* пробуем следующий источник */ }
+  }
+  return null;
+}
+/* Автообновление: если данные старше 12 часов — тихо забираем свежие из открытого источника.
+   Администратор сохраняет их в базу (тогда их видят все), остальные видят их у себя сразу. */
+let RATES_BUSY = false;
+async function autoRefreshRates(force) {
+  if (RATES_BUSY) return null;
+  const ind = (DB.settings && DB.settings.indicators) || {};
+  const fresh = ind.asOf && (Date.now() - new Date(ind.asOf).getTime()) < 12 * 3600 * 1000;
+  if (fresh && !force) return null;
+  RATES_BUSY = true;
+  const v = await fetchRates();
+  RATES_BUSY = false;
+  if (!v) { if (force) toast('Открытые источники недоступны — показываем последние сохранённые значения.', 'bad'); return null; }
+  const changed = !ind.usd || Math.abs(num(ind.usd) - v.usd) > 0.0005 || String(ind.asOf) !== String(v.asOf);
+  DB.settings.indicators = Object.assign({}, ind, { usd: v.usd, eur: v.eur, cny: v.cny, asOf: v.asOf, src: v.src, auto: true, fetchedAt: new Date().toISOString() });
+  renderIndicators();
+  save();
+  if (ONLINE && PROFILE.ok && PROFILE.role === 'admin') sbPushSettings();   // храним в базе — для всех участников
+  if (force) toast('Курсы обновлены из открытого источника: USD <b>' + fmt2(v.usd) + ' ₽</b>, CNY <b>' + fmt2(v.cny) + ' ₽</b> (' + v.src + ', ' + dt(v.asOf) + ')', 'ok');
+  else if (changed) console.log('[показатели] курсы обновлены из открытого источника', v.src, v.asOf);
+  return v;
+}
+window.autoRefreshRates = autoRefreshRates; window.fetchRates = fetchRates;
+
+/* ---------- база населённых пунктов из базы платформы (дополняет встроенную) ---------- */
+let SETTLEMENTS_LOADED = false;
+async function loadSettlements(force) {
+  if (!ONLINE || (SETTLEMENTS_LOADED && !force)) return;
+  const rows = await SB.selectOpt('settlements', 'select=name,region,okrug,lat,lon,population,kind&order=name.asc&limit=5000');
+  if (Array.isArray(rows) && rows.length) {
+    DB.settlements = rows.map(r => ({ name: r.name, region: r.region, okrug: r.okrug, lat: Number(r.lat), lon: Number(r.lon), population: Number(r.population) || 0, kind: r.kind || 'город' }));
+    SETTLEMENTS_LOADED = true; save();
+    if (typeof renderPoints === 'function' && $('#routePoints')) renderPoints();
+  }
+}
+window.loadSettlements = loadSettlements;
+
 function sbPushSettings() {
   if (!ONLINE) return;
   const rows = [{ key: 'council', val: { demoCouncil: !!DB.settings.demoCouncil, electionThreshold: DB.settings.electionThreshold || 50, elections: DB.settings.elections || null } }];
@@ -430,6 +492,7 @@ if (ONLINE) {
       await sbLoadAll(true);
     } catch (e) { SB_STATE = 'error'; sbBadge(); toast('База недоступна, работаем в локальном режиме. ' + e.message, 'bad'); }
     applyRole();
+    afterLoad();
   })();
 } else {
   /* Локальный демо-режим без базы: роль выбирается в окне «Демо-вход» */
@@ -439,4 +502,5 @@ if (ONLINE) {
   if (ROLE === 'council') VOTE_AS = 'M-1';
   renderAuthBox();   /* подпись хранилища ставит sbBadge() */
   render();
+  afterLoad();       /* локально тоже пробуем открытые источники — для свежих курсов */
 }

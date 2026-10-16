@@ -1,6 +1,8 @@
-/* СТРОКА ПОКАЗАТЕЛЕЙ на живом сайте: статичная, только актуальные цифры из базы.
-   Плюс проверка прав: рыночный ориентир в переходный период меняет Администрация,
-   курсы — справочные, тоже Администрация. После проверки всё возвращается как было. */
+/* СТРОКА ПОКАЗАТЕЛЕЙ на живом сайте: статичная, только актуальные цифры.
+   Курсы — из открытого источника (ЦБ РФ), ДТ и «Платон» — из ночного сбора либо из сетки;
+   значения тарифной сетки показаны отдельным блоком. Плюс проверка прав: рыночный ориентир
+   в переходный период утверждает Администрация (с записью в реестр решений), после выборов —
+   только голосование Совета. После проверки всё возвращается как было. */
 const { JSDOM, VirtualConsole } = require('jsdom');
 const SITE = 'https://artliss1801-ux.github.io/container-union/';
 const SB = 'https://nciyhaghjqddkqzuimff.supabase.co';
@@ -17,6 +19,7 @@ const sql = async query => {
   const r = await fetch(`https://api.supabase.com/v1/projects/${REF}/database/query`, { method: 'POST', headers: { Authorization: 'Bearer ' + MGMT, 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) });
   return r.json();
 };
+const num = x => String(x).replace('.', ',');
 
 (async () => {
   const ts = Date.now();
@@ -44,34 +47,69 @@ const sql = async query => {
   });
   await T('в строке только актуальные показатели — без событий и подсказок', () => {
     const t = strip();
-    ['ДТ', '«Платон»', 'Рыночный ориентир', 'USD'].forEach(x => { if (!t.includes(x)) throw new Error('нет ' + x); });
+    ['ДТ', '«Платон»', 'Рыночный ориентир', 'USD', 'сетка'].forEach(x => { if (!t.includes(x)) throw new Error('нет ' + x); });
     [/Реестр:/, /Биржа:/, /Подсказка/, /Логотип/].forEach(rx => { if (rx.test(t)) throw new Error('лишнее: ' + rx); });
-    return t.slice(0, 115) + '…';
+    return t.slice(0, 120) + '…';
   });
-  await T('ДТ, «Платон» и ориентир совпадают с тарифной сеткой в базе', () => {
-    const t = strip().replace(/\s/g, '');
+  await T('ДТ и «Платон»: открытые данные приоритетнее, иначе — значение сетки', () => {
+    const t = strip().replace(/\s/g, ''), v = origTariff.val, ind = origInd || {};
+    const dt = ind.dt ? num(ind.dt) : num(v.fuelPrice);
+    const pl = ind.platon ? num(ind.platon) : num(v.platon);
+    if (!t.includes(dt)) throw new Error('ДТ ' + dt + ' нет в строке: ' + t.slice(0, 160));
+    if (!t.includes(pl)) throw new Error('«Платон» ' + pl + ' нет в строке');
+    return 'ДТ ' + dt + ' ₽/л (' + (ind.dt ? 'открытые данные ' + (ind.dtAsOf || '') : 'по тарифной сетке') + ') · «Платон» ' + pl + ' ₽/км';
+  });
+  await T('блок тарифной сетки в строке совпадает с базой', () => {
+    const t = strip().replace(/\s/g, ''), v = origTariff.val;
+    if (!t.includes(num(v.fuelPrice)) || !t.includes(num(v.platon))) throw new Error('значения сетки не совпадают: ' + t.slice(0, 200));
+    if (!strip().includes(origTariff.version)) throw new Error('нет версии сетки ' + origTariff.version);
+    return origTariff.version + ' · ДТ ' + v.fuelPrice + ' · «Платон» ' + v.platon + ' ₽/км';
+  });
+  await T('рыночный ориентир в строке совпадает с базой', () => {
     const v = origTariff.val;
-    const need = [String(v.fuelPrice).replace('.', ','), String(v.platon).replace('.', ','), String(v.marketPerKm).replace('.', ',')];
-    need.forEach(x => { if (!t.includes(x)) throw new Error('нет значения ' + x + ' в строке: ' + t.slice(0, 150)); });
-    return 'ДТ ' + v.fuelPrice + ' ₽/л · «Платон» ' + v.platon + ' ₽/км · ориентир ' + v.marketPerKm + ' ₽/км · сетка ' + origTariff.version;
+    if (!strip().replace(/\s/g, '').includes(num(v.marketPerKm))) throw new Error('нет ориентира ' + v.marketPerKm);
+    return fmt(v.marketPerKm) + ' ₽/км';
   });
   await T('курс доллара взят из базы и подписан источником и датой', () => {
     const t = strip();
     if (!origInd) throw new Error('в базе нет записи indicators');
-    const usd = String(origInd.usd).replace('.', ',');
+    const usd = num(origInd.usd);
     if (!t.includes(usd)) throw new Error('нет курса ' + usd + ': ' + t);
     if (!/ЦБ/.test(t)) throw new Error('нет источника');
     if (!/\d{2}\.\d{2}\.\d{4}/.test(t)) throw new Error('нет даты');
     return 'USD ' + usd + ' ₽ · ' + origInd.src + ' на ' + origInd.asOf;
   });
+  await T('курсы подтягиваются из открытого источника (ЦБ РФ)', async () => {
+    const v = await w.fetchRates();
+    if (!v || !(v.usd > 60 && v.usd < 120)) throw new Error('нет курса: ' + JSON.stringify(v));
+    if (!/ЦБ/.test(v.src)) throw new Error('источник: ' + v.src);
+    return v.src + ': USD ' + num(v.usd) + ' ₽ на ' + v.asOf;
+  });
+  await T('база НП России подключена: подсказки и маршрут', () => {
+    const total = w.eval('SETTLEMENTS.length');
+    if (total < 1000) throw new Error('в базе только ' + total);
+    const s = w.suggestSettlements('Новорос', 5);
+    if (!s.length || !/Новороссийск/.test(s[0][0])) throw new Error('нет подсказки');
+    const km = w.roadKm('Новороссийск', 'Москва');
+    if (!(km > 1200 && km < 1750)) throw new Error('расстояние: ' + km);
+    return total + ' пунктов · Новороссийск → Москва ' + km + ' км';
+  });
+  await T('таблица дополнительных точек читается из базы (порты и таможни)', async () => {
+    const rows = await (await fetch(`${SB}/rest/v1/settlements?select=name,kind&limit=100`, { headers: H() })).json();
+    if (!Array.isArray(rows) || !rows.length) throw new Error('нет данных: ' + JSON.stringify(rows).slice(0, 120));
+    const kinds = [...new Set(rows.map(r => r.kind))].join('/');
+    if (w.loadSettlements) await w.loadSettlements(true);
+    return rows.length + ' строк, виды: ' + kinds;
+  });
 
-  /* --- права: вход администратора и редактирование показателей --- */
+  /* --- права: вход администратора --- */
   const aTok = await (await fetch(`${SB}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: ADMIN.email, password: ADMIN.password }) })).json();
   const aJwt = aTok.access_token;
   w.openLogin(); await sleep(400);
   d.querySelector('#lg_email').value = ADMIN.email;
   d.querySelector('#lg_pass').value = ADMIN.password;
   w.doLogin(); await sleep(6000);
+
   await T('администратор видит раздел «Показатели строки под шапкой»', () => {
     w.showTab('cabinet');
     const t = norm(d.querySelector('#view').textContent);
@@ -79,19 +117,30 @@ const sql = async query => {
     if (!d.querySelector('#ind_market')) throw new Error('нет поля рыночного ориентира');
     return 'поля ориентира и курсов на месте';
   });
-  await T('Администрация меняет рыночный ориентир — база и строка обновляются', async () => {
+  await T('в кабинете виден блок «Открытые данные» ночного сбора', () => {
+    const t = norm(d.querySelector('#view').textContent);
+    if (!/Открытые данные/.test(t)) throw new Error('нет блока');
+    if (!/Внести проект/.test(t)) throw new Error('нет кнопки переноса значения в проект решения');
+    const phase = w.eval('councilPhase()');
+    return 'блок на месте · фаза Совета: ' + phase + (origInd && origInd.dt ? ' · ДТ из открытых данных ' + num(origInd.dt) : ' · ждём первый ночной сбор');
+  });
+  await T('Администрация утверждает рыночный ориентир — база, строка и реестр решений', async () => {
+    if (w.eval('councilPhase()') === 'elected') return 'Совет избран — ориентир меняет только голосование (проверка пропущена)';
     d.querySelector('#ind_market').value = '89,50';
     w.saveMarketBenchmark();
-    await sleep(2500);
-    const t = (await (await fetch(`${SB}/rest/v1/tariff?select=val,approved_by&id=eq.1`, { headers: H() })).json())[0];
+    await sleep(3000);
+    const t = (await (await fetch(`${SB}/rest/v1/tariff?select=val,approved_by,version&id=eq.1`, { headers: H() })).json())[0];
     if (Number(t.val.marketPerKm) !== 89.5) throw new Error('в базе: ' + t.val.marketPerKm);
     if (!/89,50/.test(strip())) throw new Error('строка: ' + strip());
-    return 'ориентир 88 → 89,50 ₽/км, основание: ' + t.approved_by;
+    if (!/переходный период/i.test(t.approved_by)) throw new Error('основание: ' + t.approved_by);
+    return 'ориентир ' + origTariff.val.marketPerKm + ' → 89,50 ₽/км · ' + t.version + ' · ' + t.approved_by;
   });
   await T('изменение ориентира попало в реестр решений и журнал', async () => {
-    const dec = await (await fetch(`${SB}/rest/v1/decisions?select=id,title,result&order=at.desc&limit=1`, { headers: H(aJwt) })).json();
-    if (!dec.length || !/ориентир/i.test(dec[0].title)) throw new Error('нет решения: ' + JSON.stringify(dec).slice(0, 160));
-    return dec[0].id + ' · ' + dec[0].title;
+    const dec = await (await fetch(`${SB}/rest/v1/decisions?select=id,title,result&order=at.desc&limit=3`, { headers: H(aJwt) })).json();
+    const hit = (dec || []).find(x => /ориентир/i.test(x.title));
+    if (!hit) throw new Error('нет решения: ' + JSON.stringify(dec).slice(0, 160));
+    if (!/Администрацией/.test(hit.result)) throw new Error('результат: ' + hit.result);
+    return hit.id + ' · ' + hit.title + ' · ' + hit.result;
   });
   await T('Администрация обновляет курсы — они появляются в строке', async () => {
     w.showTab('cabinet');
@@ -102,21 +151,23 @@ const sql = async query => {
     const s = (await (await fetch(`${SB}/rest/v1/settings?select=val&key=eq.indicators`, { headers: H() })).json())[0];
     if (Number(s.val.usd) !== 84.1) throw new Error('в базе: ' + s.val.usd);
     if (!/84,10/.test(strip())) throw new Error('строка: ' + strip());
-    return 'USD → 84,10 ₽ (база и строка), дата ' + s.val.asOf;
+    if (origInd && origInd.dt && Number(s.val.dt) !== Number(origInd.dt)) throw new Error('ручной ввод затёр открытое значение ДТ');
+    return 'USD → 84,10 ₽ (база и строка), дата ' + s.val.asOf + (origInd && origInd.dt ? '; открытые данные ДТ не тронуты' : '');
   });
   await T('гость не может менять показатели', async () => {
     const guest = await (await fetch(`${SB}/rest/v1/settings?key=eq.indicators`, { method: 'PATCH', headers: { ...H(), Prefer: 'return=representation' }, body: JSON.stringify({ val: { usd: 1 } }) })).json();
     if (Array.isArray(guest) && guest.length) throw new Error('база позволила запись без входа!');
-    const strip2 = await (await fetch(`${SB}/rest/v1/settings?select=val&key=eq.indicators`, { headers: H() })).json();
-    if (Number(strip2[0].val.usd) !== 84.1) throw new Error('значение изменилось');
+    const after = await (await fetch(`${SB}/rest/v1/settings?select=val&key=eq.indicators`, { headers: H() })).json();
+    if (Number(after[0].val.usd) !== 84.1) throw new Error('значение изменилось');
     return 'запрос без прав отклонён, значение цело';
   });
+  await T('нет ошибок JS на живом сайте', () => { if (jsErr.length) throw new Error(jsErr.slice(0, 2).join(' | ')); return 'чисто'; });
 
   /* --- возвращаем всё как было --- */
   console.log('\n▸ Возвращаю исходные значения…');
   await fetch(`${SB}/rest/v1/tariff?id=eq.1`, { method: 'PATCH', headers: { ...H(aJwt), Prefer: 'return=minimal' }, body: JSON.stringify({ version: origTariff.version, approved: origTariff.approved, approved_by: origTariff.approved_by, val: origTariff.val }) });
   await fetch(`${SB}/rest/v1/settings?key=eq.indicators`, { method: 'PATCH', headers: { ...H(aJwt), Prefer: 'return=minimal' }, body: JSON.stringify({ val: origInd }) });
-  await sql("delete from decisions where title ilike '%Рыночный ориентир%'; delete from journal where text ilike '%ориентир%' or text ilike '%Курсы обновлены%';");
+  await sql("delete from decisions where title ilike '%ориентир%'; delete from journal where text ilike '%ориентир%' or text ilike '%Курсы обновлены%'; delete from votes where title ilike '%ориентир%';");
   const back = (await (await fetch(`${SB}/rest/v1/tariff?select=val,version,approved_by&id=eq.1`, { headers: H() })).json())[0];
   const backInd = (await (await fetch(`${SB}/rest/v1/settings?select=val&key=eq.indicators`, { headers: H() })).json())[0];
   console.log('  сетка:', back.version, '| ориентир', back.val.marketPerKm, '₽/км | основание:', back.approved_by);
@@ -124,3 +175,5 @@ const sql = async query => {
   console.log('\nОшибки JS:', jsErr.length);
   process.exit(fails.length ? 1 : 0);
 })();
+
+function fmt(x) { return String(x).replace('.', ','); }

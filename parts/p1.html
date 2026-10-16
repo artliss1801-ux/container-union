@@ -194,7 +194,8 @@ footer{border-top:1px solid var(--line);color:var(--dim);font-size:12.5px;paddin
 .totop.show{opacity:1;pointer-events:auto;transform:none}
 .totop:hover{border-color:var(--acc);box-shadow:0 10px 24px rgba(255,159,28,.3)}
 /* 2. Показатели рынка: статичная строка под шапкой (без бегущей строки).
-      Только актуальные цифры: ДТ, «Платон», рыночный ориентир, курсы валют, версия сетки. */
+      Только актуальные цифры: ДТ, «Платон», рыночный ориентир, курсы валют, сетка.
+      ДТ, «Платон» и курсы подтягиваются из открытых источников; значения тарифной сетки — решением. */
 .indic{border-bottom:1px solid var(--line);
   background:linear-gradient(90deg,rgba(255,159,28,.08),rgba(17,28,44,.92) 22%,rgba(17,28,44,.92) 78%,rgba(62,166,255,.08))}
 .indic-in{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;padding:7px 16px;max-width:1260px;margin:0 auto}
@@ -205,11 +206,29 @@ footer{border-top:1px solid var(--line);color:var(--dim);font-size:12.5px;paddin
 .indic .i.cur b{color:#8fd3ff}
 .indic .i.src{border-color:transparent;background:none;padding-left:2px}
 .indic .i.src b{color:var(--mut)}
+.indic .i.auto{border-color:rgba(47,191,113,.34);background:rgba(47,191,113,.08)}
+.indic .i.grid{border-color:transparent;background:none}
+.indic .i.grid b{color:var(--mut)}
+.indic .dot{color:var(--line2);font-size:12px}
+/* Маршрут в калькуляторе: строки точек и автоподбор населённых пунктов */
+.route-row{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.route-row .inp{min-width:0}
+.ac-wrap{position:relative;flex:1 1 auto;min-width:150px}
+.ac-wrap .inp{width:100%}
+.ac-box{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:40;max-height:260px;overflow:auto;
+  background:var(--panel2);border:1px solid var(--line2);border-radius:10px;box-shadow:var(--sh)}
+.ac-item{padding:7px 10px;font-size:13px;cursor:pointer;border-bottom:1px solid rgba(38,55,79,.6)}
+.ac-item:last-child{border-bottom:none}
+.ac-item:hover,.ac-item.on{background:rgba(255,159,28,.14)}
+.ac-item.mini{cursor:default;color:var(--dim)}
+.indic .i.auto b{color:#7ee6ab}
 @media (max-width:640px){
+  .route-row{flex-wrap:wrap}
   .indic-in{gap:3px 6px;padding:6px 10px}
   .indic .i{font-size:11px;padding:1px 7px}
   .indic .i em{display:none}
   .indic .i.src{display:none}
+  .indic .i.grid .l{display:none}
 }
 /* 3. Вкладки: без горизонтальной прокрутки, подчёркивание с анимацией */
 .tabs-in button{position:relative;border-radius:10px 10px 0 0;transition:color .2s,background .2s,transform .15s}
@@ -304,7 +323,7 @@ button.copy:hover{text-decoration:underline}
     Короткая ссылка: <b style="color:var(--acc2)">tinyurl.com/cont-union</b>
   </div>
 </aside>
-<div class="indic" id="indic" title="Актуальные показатели рынка. Значения берутся из тарифной сетки платформы и официальных курсов; обновляет Администрация, после выборов Совета рыночный ориентир меняется решением Совета"><div class="indic-in" id="indicIn"></div></div>
+<div class="indic" id="indic" title="Актуальные показатели рынка. ДТ, «Платон» и курсы валют приходят из открытых источников автоматически; рыночный ориентир и параметры тарифной сетки меняются только решением (в переходный период — Администрация, после выборов — Совет)"><div class="indic-in" id="indicIn"></div></div>
 <main><div class="wrap" id="view"></div></main>
 <button class="totop" id="toTop" title="Наверх" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
 <footer><div class="wrap">
