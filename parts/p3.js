@@ -7,6 +7,8 @@ function toast(msg, kind) {
   const el = document.createElement('div');
   el.className = 'toast ' + (kind || '');
   el.innerHTML = msg;
+  el.title = 'Нажмите, чтобы убрать';
+  el.addEventListener('click', () => el.remove());
   $('#toasts').appendChild(el);
   setTimeout(() => { el.style.transition = 'opacity .4s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 400); }, 4200);
 }
@@ -21,19 +23,20 @@ $('#modalBg') && $('#modalBg').addEventListener('click', e => { if (e.target.id 
 
 /* ---------- вкладки ---------- */
 const TABS = [
-  ['about', 'О платформе'],
-  ['calc', 'Калькулятор ставки'],
-  ['carriers', 'Перевозчики и рейтинг'],
-  ['loads', 'Грузы'],
-  ['council', 'Совет перевозчиков'],
-  ['docs', 'Документы платформы'],
-  ['cabinet', 'Кабинет']
+  ['about', 'О платформе', 'О платформе'],
+  ['calc', 'Калькулятор ставки', 'Калькулятор'],
+  ['carriers', 'Перевозчики и рейтинг', 'Перевозчики'],
+  ['loads', 'Грузы', 'Грузы'],
+  ['council', 'Совет перевозчиков', 'Совет'],
+  ['docs', 'Документы платформы', 'Документы'],
+  ['cabinet', 'Кабинет', 'Кабинет']
 ];
 let TAB = 'about';
 
 function renderTabs() {
-  $('#tabs').innerHTML = TABS.map(([id, l]) =>
-    '<button class="' + (TAB === id ? 'active' : '') + '" onclick="showTab(\'' + id + '\')">' + l +
+  $('#tabs').innerHTML = TABS.map(([id, l, short]) =>
+    '<button class="' + (TAB === id ? 'active' : '') + '" onclick="showTab(\'' + id + '\')" title="' + l + '">' +
+    '<span class="lt">' + l + '</span><span class="st">' + (short || l) + '</span>' +
     (id === 'council' ? (councilPhase() === 'formation' ? ' <span class="mini">(формируется)</span>' : '') + (realOpenVotes() ? ' <span class="badge b-gold">' + realOpenVotes() + '</span>' : '') : '') +
     (id === 'cabinet' && ROLE === 'admin' && DB.applications.filter(a => a.status === 'pending').length ? ' <span class="badge b-info">' + DB.applications.filter(a => a.status === 'pending').length + '</span>' : '') +
     '</button>').join('');
@@ -49,27 +52,92 @@ window.realOpenVotes = realOpenVotes;
 function showTab(id) { TAB = id; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 window.showTab = showTab;
 
-function render() { renderTabs(); $('#view').innerHTML = ({ about: viewAbout, calc: viewCalc, carriers: viewCarriers, loads: viewLoads, council: viewCouncil, docs: viewDocs, cabinet: viewCabinet }[TAB])(); if (TAB === 'calc') calcAfterRender(); renderTabs(); }
+function render() {
+  renderTabs();
+  const v = $('#view');
+  v.innerHTML = ({ about: viewAbout, calc: viewCalc, carriers: viewCarriers, loads: viewLoads, council: viewCouncil, docs: viewDocs, cabinet: viewCabinet }[TAB])();
+  if (TAB === 'calc') calcAfterRender();
+  renderTabs();
+  renderTicker();
+  if (v.classList) { v.classList.remove('view-in'); void v.offsetWidth; v.classList.add('view-in'); }
+  decorateView();
+}
 
 
 /* ============================================================
    ВКЛАДКА 0. О ПЛАТФОРМЕ
    ============================================================ */
+/* Рисунок контейнеровоза для главного экрана: палуба с контейнерами, надстройка, волны */
+function heroShipSvg() {
+  const cols = ['#ff9f1c', '#3ea6ff', '#2fbf71', '#ef5350', '#9b8cff', '#e9c31c', '#ffb347'];
+  let boxes = '', k = 0;
+  [[80, 9, 26], [68, 8, 38], [56, 5, 56]].forEach(([y, n, x0], ri) => {
+    for (let i = 0; i < n; i++) {
+      const x = x0 + i * 30;
+      const c = cols[(k * 3 + ri * 2) % cols.length]; k++;
+      boxes += '<rect x="' + x + '" y="' + y + '" width="28" height="11" rx="1.6" fill="' + c + '" opacity=".95"/>' +
+               '<rect x="' + x + '" y="' + y + '" width="28" height="11" rx="1.6" fill="url(#hRib)" opacity=".5"/>';
+    }
+  });
+  return '<svg viewBox="0 0 360 140" role="img" aria-label="Контейнеровоз «Контейнерный Союз»">' +
+    '<defs>' +
+    '<linearGradient id="hHull" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4d6b93"/><stop offset="1" stop-color="#1a2c45"/></linearGradient>' +
+    '<linearGradient id="hSea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1d3a5c"/><stop offset="1" stop-color="#0c1828"/></linearGradient>' +
+    '<pattern id="hRib" width="7" height="11" patternUnits="userSpaceOnUse"><rect width="1.4" height="11" fill="#000"/></pattern>' +
+    '</defs>' +
+    '<rect x="0" y="100" width="360" height="40" fill="url(#hSea)"/>' +
+    '<g class="hero-bob">' + boxes +
+    '<rect x="286" y="52" width="26" height="48" rx="2" fill="#dbe6f5" opacity=".92"/>' +
+    '<rect x="290" y="58" width="18" height="4" rx="1" fill="#37506f" opacity=".75"/>' +
+    '<rect x="290" y="66" width="18" height="4" rx="1" fill="#37506f" opacity=".75"/>' +
+    '<rect x="290" y="74" width="18" height="4" rx="1" fill="#37506f" opacity=".75"/>' +
+    '<rect x="294" y="38" width="10" height="16" rx="2" fill="#ff6a00"/>' +
+    '<path d="M14 100 H292 L332 122 H34 Z" fill="url(#hHull)"/>' +
+    '<rect x="14" y="98" width="278" height="4" fill="#ff9f1c" opacity=".85"/>' +
+    '</g>' +
+    '<path class="sea-line" d="M-60 112q14-6 28 0t28 0 28 0 28 0 28 0 28 0 28 0 28 0 28 0 28 0 28 0 28 0 28 0 28 0 28 0" fill="none" stroke="#3ea6ff" stroke-opacity=".45" stroke-width="1.6"/>' +
+    '<path class="sea-line" style="animation-duration:13s" d="M-100 127q16-5 32 0t32 0 32 0 32 0 32 0 32 0 32 0 32 0 32 0 32 0 32 0 32 0 32 0" fill="none" stroke="#3ea6ff" stroke-opacity=".28" stroke-width="1.4"/>' +
+    '</svg>';
+}
+window.heroShipSvg = heroShipSvg;
+
 function viewAbout() {
   const pr = electionProgress();
   const phase = councilPhase();
   return `
-  <div class="card">
-    <div class="row between" style="align-items:flex-start">
-      <div style="max-width:760px">
-        <div class="ks-logo" style="margin-bottom:12px"><span class="ks-mark">КС</span><span class="ks-full">Контейнерный&nbsp;<b>Союз</b></span></div>
-        <h2 style="font-size:24px">Контейнерный Союз</h2>
-        <div class="sub" style="font-size:14px">Открытая отраслевая платформа контейнерных автоперевозок России: экономически обоснованная ставка, рейтинг добросовестности, биржа заявок и отраслевое саморегулирование через Совет перевозчиков.</div>
+  <div class="hero card" style="padding:20px">
+    <div class="row between" style="align-items:flex-start;gap:18px">
+      <div style="flex:1 1 560px;max-width:640px">
+        <div class="ks-logo" style="margin-bottom:12px" title="Контейнерный Союз — наведите, и название развернётся из букв"><span class="vh">Контейнерный Союз</span><span class="ks-ship"><span class="ks-bridge"></span><span class="ks-box">К</span><span class="ks-word" style="--n:11"><i style="--i:0;--w:.62em">о</i><i style="--i:1;--w:.62em">н</i><i style="--i:2;--w:.52em">т</i><i style="--i:3;--w:.56em">е</i><i style="--i:4;--w:.56em">й</i><i style="--i:5;--w:.62em">н</i><i style="--i:6;--w:.56em">е</i><i style="--i:7;--w:.46em">р</i><i style="--i:8;--w:.62em">н</i><i style="--i:9;--w:.72em">ы</i><i style="--i:10;--w:.56em">й</i></span><span class="ks-box">С</span><span class="ks-word" style="--n:3"><i style="--i:0;--w:.62em">о</i><i style="--i:1;--w:.68em">ю</i><i style="--i:2;--w:.52em">з</i></span></span><span class="ks-hull"></span><span class="ks-sea"></span></div>
+        <h2 style="font-size:25px">Контейнерный Союз</h2>
+        <div class="sub" style="font-size:14.5px">Открытая отраслевая платформа контейнерных автоперевозок России: экономически обоснованная ставка, рейтинг добросовестности, биржа заявок и отраслевое саморегулирование через Совет перевозчиков.</div>
+        <div class="chips" style="margin-top:14px">
+          <button class="chip" onclick="showTab('calc')">🧮 Рассчитать ставку</button>
+          <button class="chip" onclick="showTab('carriers')">📋 Реестр и рейтинг</button>
+          <button class="chip" onclick="showTab('loads')">📦 Биржа заявок</button>
+          <button class="chip" onclick="showTab('council')">🗳️ Совет перевозчиков</button>
+          <button class="chip" onclick="showTab('docs')">📄 Документы</button>
+        </div>
+        <div class="row" style="margin-top:14px">
+          <span class="link-copy">🌐 cont-union.ru <button class="copy" onclick="copyLink('https://cont-union.ru','Адрес сайта скопирован')">копировать</button></span>
+          <span class="link-copy">🔗 tinyurl.com/cont-union <button class="copy" onclick="copyLink('https://tinyurl.com/cont-union','Короткая ссылка скопирована')">копировать</button></span>
+        </div>
       </div>
-      <div style="text-align:right;min-width:190px">
+      <div class="hero-art" aria-hidden="true">${heroShipSvg()}</div>
+    </div>
+    <hr>
+    <div class="row between" style="gap:14px">
+      <div style="flex:1 1 320px;min-width:220px">
+        <div class="row between" style="margin-bottom:6px">
+          <span class="mini">Путь к выборам Совета: реестр наполняется реальными перевозчиками</span>
+          <span class="mini mono"><b style="color:var(--acc2)">${pr.n}</b> / ${pr.need}</span>
+        </div>
+        <div class="bar" style="height:9px"><i style="width:${Math.min(100, Math.round(pr.n / pr.need * 100))}%"></i></div>
+        <div class="mini" style="margin-top:6px">${phase === 'formation' ? 'Переходный период: тарифную сетку ведёт Администрация, проекты решений идут в открытые обсуждения.' : 'Выборы Совета: сроки и кандидаты — во вкладке «Совет перевозчиков».'}</div>
+      </div>
+      <div style="text-align:right;min-width:170px">
         <span class="badge ${PHASE_TEXT[phase][1]}">${PHASE_TEXT[phase][0]}</span>
-        <div style="font-size:26px;font-weight:900;color:var(--acc);margin-top:10px">${pr.n} / ${pr.need}</div>
-        <div class="mini">перевозчиков до выборов Совета</div>
+        <div class="mini" style="margin-top:8px">Порог формирования Совета — ${pr.need} перевозчиков</div>
       </div>
     </div>
   </div>
@@ -138,7 +206,8 @@ function viewAbout() {
       </div>
       <div class="card" style="margin-top:16px">
         <h3>Навигация</h3>
-        <p class="mini">Логотип <b>КС</b> в шапке и в начале строки вкладок ведёт на эту страницу: наведите на него курсор — развернётся полное название.</p>
+        <p class="mini">Логотип <b>КС</b> нарисован как контейнеровоз: из буквы <b>К</b> разворачивается «онтейнерный», из буквы <b>С</b> — «оюз», и получается полное название. Наведите курсор на логотип (или коснитесь его) — увидите.</p>
+        <p class="mini" style="margin-top:8px">Вкладки переключаются клавишами <b>←</b> и <b>→</b>, на телефоне — свайпом влево/вправо по экрану. Горизонтальной прокрутки в меню больше нет: на узком экране вкладки переносятся на вторую строку. Кнопка <b>↑</b> в правом нижнем углу возвращает наверх.</p>
       </div>
     </div>
   </div>`;
@@ -163,8 +232,16 @@ function viewCalc() {
           <div>
             <div class="field"><label>Пункт отправления</label><select id="c_from">${opts}</select></div>
             <div class="field"><label>Пункт назначения</label><select id="c_to">${opts}</select></div>
+            <div class="mini" style="margin:2px 0 6px">Частые плечи — в один клик:</div>
+            <div class="chips" style="margin-bottom:10px">
+              <button class="chip" onclick="calcPreset('Новороссийск','Москва')">Новороссийск → Москва</button>
+              <button class="chip" onclick="calcPreset('Новороссийск','Екатеринбург')">Новороссийск → Екатеринбург</button>
+              <button class="chip" onclick="calcPreset('Санкт-Петербург','Казань')">Санкт-Петербург → Казань</button>
+              <button class="chip" onclick="calcPreset('Москва','Владивосток')">Москва → Владивосток</button>
+            </div>
             <button class="btn sm" onclick="calcDistance()">↔ Рассчитать расстояние</button>
-            <div class="fnote">Расстояние определяется справочно по дорожной сети (коэффициент извилистости); при необходимости укажите фактическое значение вручную — оно имеет приоритет.</div>
+            <div class="fnote">Расстояние определяется справочно по дорожной сети (коэффициент извилистости); при необходимости укажите фактическое значение вручную — оно имеет приоритет.
+            <b>Расчёт обновляется сам</b> при изменении любого поля — нажимать «Рассчитать ставку» не обязательно.</div>
           </div>
           <div>
             <div class="field"><label>Расстояние, км (гружёный пробег)</label><input type="number" id="c_km" value="1390"></div>
@@ -217,7 +294,7 @@ function viewCalc() {
       </div>
     </div>
     <div>
-      <div id="calcOut"><div class="result"><div class="mini">Здесь появится расчёт ставки</div><div class="big">— ₽</div><div class="mini">Укажите параметры рейса и нажмите «Рассчитать ставку»</div></div></div>
+      <div id="calcOut"><div class="result"><div class="mini">Здесь появится расчёт ставки</div><div class="big">— ₽</div><div class="mini">Заполните поля слева — ставка посчитается сама. Пресеты плеч ускоряют работу.</div></div></div>
       <div class="card" style="margin-top:16px">
         <h3>История расчётов</h3>
         <div class="sub">Сохраняется в браузере (в проде — в личном кабинете).</div>
@@ -234,11 +311,11 @@ function viewCalc() {
     </div>
   </div>`;
 }
-function calcDistance() {
+function calcDistance(silent) {
   const km = roadKm($('#c_from').value, $('#c_to').value);
-  if (!km) { toast('Не удалось определить маршрут', 'bad'); return; }
+  if (!km) { if (!silent) toast('Не удалось определить маршрут', 'bad'); return; }
   $('#c_km').value = km; $('#c_empty').value = km;
-  toast('Расстояние ' + $('#c_from').value + ' → ' + $('#c_to').value + ': <b>' + fmt(km) + ' км</b> (справочно)');
+  if (!silent) toast('Расстояние ' + $('#c_from').value + ' → ' + $('#c_to').value + ': <b>' + fmt(km) + ' км</b> (справочно)');
 }
 function calcInputs() {
   const inp = {
@@ -332,6 +409,11 @@ function viewCarriers() {
     <div class="kpi"><div class="k">${DB.carriers.length ? Math.round(DB.carriers.reduce((s, c) => s + c.fleet, 0)) : 0}</div><div class="l">единиц техники в парке</div><div class="n">${DB.carriers.reduce((s, c) => s + c.containers, 0)} контейнерных площадок</div></div>
   </div>
   <div class="card pad0">
+    ${rows.length ? `<div class="row" style="padding:14px 16px 0;gap:12px">
+      <input id="cf_q" class="search" style="max-width:340px" placeholder="Поиск: название, город, регион или ИНН" oninput="carrierSearch(this.value)">
+      <span class="mini counter" id="cf_count">всего ${rows.length}</span>
+      <span class="mini">начните печатать — таблица отфильтруется сразу</span>
+    </div>` : ''}
     <div class="row between" style="padding:14px 16px;gap:10px">
       <div class="row">
         <div><label class="mini">Федеральный округ</label><select id="f_region" style="width:auto" onchange="setFilter('region',this.value)"><option value="">Все</option>${regions.map(r => '<option ' + (FILTER.region === r ? 'selected' : '') + '>' + r + '</option>').join('')}</select></div>
@@ -341,17 +423,17 @@ function viewCarriers() {
       <button class="btn" onclick="showTab('cabinet')">Регистрация перевозчика</button>
     </div>
     <div class="tbl-scroll"><table>
-      <thead><tr><th>Место</th><th>Перевозчик</th><th>Регион</th><th>Парк</th><th>Контейнеры</th><th>Рейтинг</th><th>Уровень</th><th>Статус</th><th></th></tr></thead>
-      <tbody>
+      <thead><tr><th>Место</th><th>Перевозчик</th><th>Регион</th><th>Парк</th><th class="col-hide-sm">Контейнеры</th><th>Рейтинг</th><th class="col-hide-sm">Уровень</th><th>Статус</th><th></th></tr></thead>
+      <tbody id="carrierRows">
       ${!rows.length ? '<tr><td colspan="9" style="text-align:center;padding:26px"><div class="mini">В реестре пока нет перевозчиков.<br>Станьте первым — регистрация занимает несколько минут и бесплатна.</div><div style="margin-top:10px"><button class="btn pri" onclick="showTab(\'cabinet\')">Зарегистрировать компанию</button></div></td></tr>' : ''}
-      ${rows.map((c, i) => `<tr>
+      ${rows.map((c, i) => `<tr data-s="${esc((c.name + ' ' + c.city + ' ' + c.region + ' ' + c.inn + ' ' + (c.form || '')).toLowerCase())}">
         <td class="mono"><b>${i + 1}</b></td>
         <td><b>${esc(c.name)}</b> ${c.demo ? '<span class="badge b-mut">демо</span>' : ''}<div class="mini">${c.form === 'ИП' ? 'ИП' : 'ООО'}, ИНН ${esc(c.inn)} · на платформе с ${dt(c.joined)}</div></td>
         <td>${esc(c.city)}<div class="mini">${esc(c.region)}</div></td>
         <td class="mono">${c.fleet}</td>
-        <td class="mono">${c.containers}<div class="mini">${c.types.join(', ')}</div></td>
+        <td class="mono col-hide-sm">${c.containers}<div class="mini">${c.types.join(', ')}</div></td>
         <td><b class="mono">${c.r.score}</b><div class="mini">${starsHtml(c.r.stars)}</div></td>
-        <td><span class="badge ${c.r.cls}">${c.r.level}</span></td>
+        <td class="col-hide-sm"><span class="badge ${c.r.cls}">${c.r.level}</span></td>
         <td><span class="badge ${STATUS_LABEL[c.status][1]}">${STATUS_LABEL[c.status][0]}</span></td>
         <td><button class="btn sm" onclick="carrierCard('${c.id}')">Карточка</button></td>
       </tr>`).join('')}
@@ -529,3 +611,195 @@ function loadCreate() {
   save(); closeModal(); render(); toast('Заявка ' + l.id + ' опубликована на бирже', 'ok');
 }
 [loadCard, placeBid, loadForm, loadCreate].forEach(f => window[f.name] = f);
+
+/* ============================================================
+   ЖИВОЙ ИНТЕРФЕЙС: лента событий, свайпы, горячие клавиши, отклик
+   ============================================================ */
+/* ---------- лента событий платформы (под вкладками) ---------- */
+function renderTicker() {
+  const el = $('#tickerIn'); if (!el || !DB || !DB.tariff) return;
+  const t = DB.tariff.val;
+  const real = DB.carriers.filter(c => !c.demo).length;
+  const verified = DB.carriers.filter(c => !c.demo && c.status === 'verified').length;
+  const need = (DB.settings && DB.settings.electionThreshold) || 50;
+  const openVotes = DB.votes.filter(v => v.status === 'voting' && !v.demo).length;
+  const openLoads = DB.loads.filter(l => l.status === 'open').length;
+  const elections = DB.settings && DB.settings.elections;
+  const items = [
+    'Тарифная сетка <b>' + esc(DB.tariff.version) + '</b>: ДТ <b>' + fmt2(t.fuelPrice) + ' ₽/л</b>, «Платон» <b>' + fmt2(t.platon) + ' ₽/км</b>, рыночный ориентир <b>' + fmt2(t.marketPerKm) + ' ₽/км</b>',
+    'Реестр: реальных перевозчиков <b>' + real + '</b>' + (verified ? ', верифицировано <span class="t-ok">' + verified + '</span>' : '') + ' · порог выборов Совета — <b>' + need + '</b>',
+    'Биржа: открытых заявок <b>' + openLoads + '</b> · вопросов Совета на голосовании <b>' + openVotes + '</b>',
+    elections ? 'Выборы Совета назначены — сроки во вкладке «Совет перевозчиков»' : 'Переходный период: тарифную сетку ведёт Администрация, проекты решений — в открытых обсуждениях',
+    'Логотип КС: наведите курсор — из букв развернётся «Контейнерный Союз»',
+    'Подсказка: вкладки переключаются клавишами ← и →, на телефоне — свайпом по экрану'
+  ];
+  const html = items.concat(items).map(x => '<span>' + x + '</span>').join('');
+  if (el.innerHTML !== html) el.innerHTML = html;   /* не перезапускать прокрутку без нужды */
+}
+window.renderTicker = renderTicker;
+
+/* ---------- появление карточек и подсказки в широких таблицах ---------- */
+let IO_REVEAL = null;
+function decorateView() {
+  const v = $('#view'); if (!v || !v.querySelectorAll) return;
+  if ('IntersectionObserver' in window) {
+    if (!IO_REVEAL) IO_REVEAL = new IntersectionObserver(list => {
+      list.forEach(x => { if (x.isIntersecting) { x.target.classList.add('on'); IO_REVEAL.unobserve(x.target); } });
+    }, { rootMargin: '0px 0px -6% 0px', threshold: 0.04 });
+    v.querySelectorAll('.card,.kpi,.member,.vote-box,.hero').forEach((n, i) => {
+      if (n.classList.contains('rv')) return;
+      n.classList.add('rv');
+      n.style.transitionDelay = Math.min(i, 8) * 30 + 'ms';
+      IO_REVEAL.observe(n);
+    });
+  }
+  v.querySelectorAll('.tbl-scroll').forEach(el => {
+    if (el.scrollWidth > el.clientWidth + 8 && !el.querySelector('.scroll-hint')) {
+      const h = document.createElement('div');
+      h.className = 'scroll-hint';
+      h.innerHTML = '↔ таблица прокручивается вбок — на телефоне ведите пальцем';
+      el.insertBefore(h, el.firstChild);
+      el.addEventListener('scroll', () => { if (el.scrollLeft > 8) h.remove(); }, { once: true });
+    }
+  });
+}
+window.decorateView = decorateView;
+
+/* ---------- калькулятор: пресеты плеч и автоматический пересчёт ---------- */
+let CALC_TIMER = null;
+function calcPulse() {
+  const out = $('#calcOut'); if (!out || !out.classList) return;
+  out.classList.remove('pulse'); void out.offsetWidth; out.classList.add('pulse');
+}
+function calcLive() {
+  if (TAB !== 'calc') return;
+  clearTimeout(CALC_TIMER);
+  CALC_TIMER = setTimeout(() => { if (TAB !== 'calc') return; calcRun(true); calcPulse(); }, 240);
+}
+function calcPreset(from, to) {
+  const f = $('#c_from'), t = $('#c_to'); if (!f || !t) return;
+  f.value = from; t.value = to;
+  calcDistance(true); calcRun(true); calcPulse();
+  toast('Плечо подставлено: <b>' + esc(from) + ' → ' + esc(to) + '</b> — ставка пересчитана', 'ok');
+}
+window.calcPreset = calcPreset;
+
+/* ---------- реестр: живой поиск по таблице ---------- */
+function carrierSearch(q) {
+  q = String(q || '').trim().toLowerCase();
+  const body = $('#carrierRows'); if (!body) return;
+  const rows = body.querySelectorAll('tr[data-s]');
+  let shown = 0;
+  rows.forEach(tr => {
+    const hit = !q || (tr.getAttribute('data-s') || '').indexOf(q) >= 0;
+    tr.style.display = hit ? '' : 'none';
+    if (hit) shown++;
+  });
+  const c = $('#cf_count'); if (c) c.textContent = q ? ('найдено ' + shown + ' из ' + rows.length) : ('всего ' + rows.length);
+}
+window.carrierSearch = carrierSearch;
+
+/* ---------- переход между вкладками: клавиши и свайпы ---------- */
+function currentTabIndex() { return TABS.findIndex(t => t[0] === TAB); }
+function shiftTab(step) {
+  const i = currentTabIndex(); if (i < 0) return;
+  showTab(TABS[(i + step + TABS.length) % TABS.length][0]);
+}
+window.shiftTab = shiftTab;
+
+/* ---------- копирование ссылки ---------- */
+function copyLink(text, okMsg) {
+  const done = () => toast((okMsg || 'Скопировано') + ': <b>' + esc(text) + '</b>', 'ok');
+  const fallback = () => {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove(); done();
+    } catch (e) {
+      openModal('Ссылка на сайт', '<div class="note">Скопируйте адрес вручную:<br><b>' + esc(text) + '</b></div>', '<button class="btn" onclick="closeModal()">Закрыть</button>');
+    }
+  };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; }
+  } catch (e) {}
+  fallback();
+}
+window.copyLink = copyLink;
+
+/* ---------- инициализация отклика интерфейса ---------- */
+(function initLive() {
+  /* рябь по кнопкам */
+  document.addEventListener('click', e => {
+    const b = e.target && e.target.closest && e.target.closest('.btn,.chip');
+    if (!b || !b.getBoundingClientRect) return;
+    const r = b.getBoundingClientRect();
+    if (!r.width) return;
+    const d = Math.max(r.width, r.height), s = document.createElement('span');
+    s.className = 'ripple';
+    s.style.width = s.style.height = d + 'px';
+    s.style.left = (e.clientX - r.left - d / 2) + 'px';
+    s.style.top = (e.clientY - r.top - d / 2) + 'px';
+    b.appendChild(s);
+    setTimeout(() => s.remove(), 650);
+  }, true);
+
+  /* логотип: клик/касание разворачивает название (для планшетов и телефонов) */
+  document.addEventListener('click', e => {
+    const el = e.target && e.target.closest && e.target.closest('.ks-logo');
+    if (!el || el.closest('.logo-tab') || (e.target.closest && e.target.closest('.copy'))) return;
+    el.classList.toggle('open');
+  });
+
+  /* клавиши ← → и Esc */
+  document.addEventListener('keydown', e => {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    const t = e.target || {};
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName || '') || t.isContentEditable) return;
+    const mb = $('#modalBg');
+    if (mb && mb.classList.contains('open')) { if (e.key === 'Escape') closeModal(); return; }
+    if (e.key === 'ArrowRight') shiftTab(1);
+    else if (e.key === 'ArrowLeft') shiftTab(-1);
+  });
+
+  /* свайп по содержимому: следующая/предыдущая вкладка */
+  const v = $('#view');
+  if (v && v.addEventListener) {
+    let x0 = 0, y0 = 0, t0 = 0, armed = false;
+    v.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1) { armed = false; return; }
+      const tg = e.target;
+      if (tg.closest && (tg.closest('.tbl-scroll') || tg.closest('input') || tg.closest('select') || tg.closest('textarea') || tg.closest('.chips'))) { armed = false; return; }
+      armed = true; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now();
+    }, { passive: true });
+    v.addEventListener('touchend', e => {
+      if (!armed) return; armed = false;
+      const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+      if (Date.now() - t0 > 800 || Math.abs(dx) < 70 || Math.abs(dy) > 55) return;
+      shiftTab(dx < 0 ? 1 : -1);
+    }, { passive: true });
+  }
+
+  /* калькулятор: пересчёт при вводе и при смене плеча */
+  document.addEventListener('input', e => { const id = (e.target && e.target.id) || ''; if (/^c_/.test(id)) calcLive(); });
+  document.addEventListener('change', e => {
+    const id = (e.target && e.target.id) || '';
+    if (id === 'c_from' || id === 'c_to') { calcDistance(true); calcRun(true); calcPulse(); }
+    else if (/^c_/.test(id)) calcLive();
+  });
+
+  /* полоса прогресса чтения и кнопка «наверх» */
+  const pb = $('#progress'), tt = $('#toTop');
+  const onScroll = () => {
+    const h = document.documentElement || {};
+    const max = (h.scrollHeight || 0) - (h.clientHeight || 0);
+    const y = window.pageYOffset || h.scrollTop || 0;
+    if (pb) pb.style.width = (max > 0 ? Math.min(100, y / max * 100) : 0) + '%';
+    if (tt && tt.classList) tt.classList.toggle('show', y > 520);
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  onScroll();
+
+  renderTicker();
+})();
