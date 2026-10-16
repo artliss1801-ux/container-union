@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Сайт (живой) | **https://artliss1801-ux.github.io/container-union/** |
+| Сайт (живой) | **https://artliss1801-ux.github.io/container-union/** — обновление 16.10.2026, коммит `e1e67a0`, сборка 350 593 Б |
 | Короткая ссылка | **https://tinyurl.com/cont-union** (резерв: https://clck.ru/3WXESa) |
 | Репозиторий | https://github.com/artliss1801-ux/container-union |
 | База данных | Supabase (бесплатный тариф), проект `nciyhaghjqddkqzuimff` — подключён через `config.js` |

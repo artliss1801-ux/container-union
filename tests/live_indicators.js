@@ -167,7 +167,17 @@ const num = x => String(x).replace('.', ',');
   console.log('\n▸ Возвращаю исходные значения…');
   await fetch(`${SB}/rest/v1/tariff?id=eq.1`, { method: 'PATCH', headers: { ...H(aJwt), Prefer: 'return=minimal' }, body: JSON.stringify({ version: origTariff.version, approved: origTariff.approved, approved_by: origTariff.approved_by, val: origTariff.val }) });
   await fetch(`${SB}/rest/v1/settings?key=eq.indicators`, { method: 'PATCH', headers: { ...H(aJwt), Prefer: 'return=minimal' }, body: JSON.stringify({ val: origInd }) });
-  await sql("delete from decisions where title ilike '%ориентир%'; delete from journal where text ilike '%ориентир%' or text ilike '%Курсы обновлены%'; delete from votes where title ilike '%ориентир%';");
+  /* Уборка тестовых записей: через Management API, а если токена нет — обычными удалениями
+     под правами администратора (политика admin_all разрешает все операции). */
+  if (MGMT) {
+    await sql("delete from decisions where title ilike '%ориентир%'; delete from journal where text ilike '%ориентир%' or text ilike '%Курсы обновлены%'; delete from votes where title ilike '%ориентир%';");
+  } else {
+    const del = async (t, q) => fetch(`${SB}/rest/v1/${t}?${q}`, { method: 'DELETE', headers: { ...H(aJwt), Prefer: 'return=minimal' } });
+    await del('decisions', 'title=' + encodeURIComponent('ilike.*ориентир*'));
+    await del('votes', 'title=' + encodeURIComponent('ilike.*ориентир*'));
+    await del('journal', 'or=' + encodeURIComponent('(text.ilike.*ориентир*,text.ilike.*Курсы обновлены*)'));
+    console.log('  (Management API-токена нет — уборка выполнена под правами администратора)');
+  }
   const back = (await (await fetch(`${SB}/rest/v1/tariff?select=val,version,approved_by&id=eq.1`, { headers: H() })).json())[0];
   const backInd = (await (await fetch(`${SB}/rest/v1/settings?select=val&key=eq.indicators`, { headers: H() })).json())[0];
   console.log('  сетка:', back.version, '| ориентир', back.val.marketPerKm, '₽/км | основание:', back.approved_by);
