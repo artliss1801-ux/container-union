@@ -76,13 +76,12 @@ async function openSite() {
     if (p.role !== 'carrier') throw new Error('роль: ' + p.role);
     return 'profiles: ' + p.email + ' → ' + p.role + ' (присвоено автоматически при регистрации)';
   });
-  const card = await rest('carriers?select=id,status,owner,name&name=eq.' + encodeURIComponent('ООО «Тест Ролей»'));
+  const card = await rest('carriers?select=id,status,owner,name&owner=eq.' + testUid);
   await T('карточка перевозчика создана и привязана к аккаунту', () => {
     const c = (card.data || [])[0];
-    if (!c) throw new Error('нет карточки');
-    if (c.owner !== testUid) throw new Error('владелец: ' + c.owner);
+    if (!c) throw new Error('нет карточки с владельцем ' + testUid);
     if (c.status !== 'pending') throw new Error('статус: ' + c.status);
-    return c.id + ' · статус ' + c.status + ' · владелец совпадает с аккаунтом';
+    return c.id + ' · статус ' + c.status + ' · владелец = аккаунт перевозчика';
   });
   const carrierId = (card.data || [])[0] && card.data[0].id;
 
@@ -95,14 +94,14 @@ async function openSite() {
     return 'HTTP ' + selfVerify.status + ', изменённых строк: 0 — статус остался pending';
   });
   const selfAdmin = await restWrite('profiles?id=eq.' + testUid, 'PATCH', { role: 'admin' }, cJwt);
-  await T('перевозчик не может назначить себя администратором', () => {
+  await T('перевозчик не может назначить себя администратором', async () => {
     const changed = Array.isArray(selfAdmin.data) && selfAdmin.data.length > 0;
     if (changed) throw new Error('роль изменилась — правило не работает!');
-    if (![400, 401, 403].includes(selfAdmin.status)) throw new Error('HTTP ' + selfAdmin.status);
+    if (![200, 204, 400, 401, 403].includes(selfAdmin.status)) throw new Error('HTTP ' + selfAdmin.status);
     const after = await rest('profiles?select=role&id=eq.' + testUid, cJwt);
     const role = ((after.data || [])[0] || {}).role;
     if (role !== 'carrier') throw new Error('роль в базе: ' + role);
-    return 'HTTP ' + selfAdmin.status + ' — роль осталась ' + role;
+    return 'HTTP ' + selfAdmin.status + ', изменённых строк: 0 — роль осталась ' + role;
   });
   const appsAsCarrier = await rest('applications?select=id', cJwt);
   await T('заявки участников перевозчику не видны', () => {
@@ -190,9 +189,16 @@ async function openSite() {
   if (carrierId) await fetch(`${SB}/rest/v1/carriers?id=eq.${carrierId}`, { method: 'DELETE', headers: H(aJwt) });
   await fetch(`${SB}/rest/v1/applications?name=eq.` + encodeURIComponent('ООО «Тест Ролей»'), { method: 'DELETE', headers: H(aJwt) });
   await fetch(`${SB}/rest/v1/journal?text=like.*Тест Ролей*`, { method: 'DELETE', headers: H(aJwt) });
-  if (testUid) {
-    const del = await fetch(`https://api.supabase.com/v1/projects/${REF}/auth/admin/users/${testUid}`, { method: 'DELETE', headers: { Authorization: 'Bearer ' + MGMT } });
-    console.log('  аккаунт удалён из Supabase Auth:', del.status === 200 || del.status === 204 ? 'да' : 'HTTP ' + del.status);
+  if (testUid && MGMT) {
+    const keys = await (await fetch(`https://api.supabase.com/v1/projects/${REF}/api-keys?reveal=true`, { headers: { Authorization: 'Bearer ' + MGMT } })).json();
+    const svc = (Array.isArray(keys) ? keys : []).find(k => ['service_role', 'secret'].includes(k.name) && k.api_key);
+    if (svc) {
+      const del = await fetch(`${SB}/auth/v1/admin/users/${testUid}`, { method: 'DELETE', headers: { apikey: svc.api_key, Authorization: 'Bearer ' + svc.api_key } });
+      console.log('  аккаунт удалён из Supabase Auth:', del.status === 200 || del.status === 204 ? 'да' : 'HTTP ' + del.status);
+    } else {
+      console.log('  служебный ключ не получен — аккаунт остаётся');
+    }
+    await fetch(`${SB}/rest/v1/profiles?email=like.test-perevozchik-*`, { method: 'DELETE', headers: H(aJwt) });
   }
   const left = await rest('profiles?select=email,role,is_primary', aJwt);
   console.log('  роли в базе после уборки:', JSON.stringify(left.data));

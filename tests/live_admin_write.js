@@ -29,9 +29,9 @@ const T = (n, f) => { try { const r = f(); console.log('✓', n, r ? '— ' + r 
   d.querySelector('#lg_email').value = process.env.ADMIN_EMAIL || '';
   d.querySelector('#lg_pass').value = process.env.ADMIN_PASSWORD || '';
   w.doLogin(); await sleep(4000);
-  T('вход администратора', () => { const b = d.querySelector('#authBox').textContent.replace(/[\u00a0\u202f]/g, ' ').trim(); if (!/куратор/.test(b)) throw new Error(b); return b; });
+  T('вход администратора', () => { const b = d.querySelector('#authBox').textContent.replace(/[\u00a0\u202f]/g, ' ').trim(); if (!/Администратор/.test(b)) throw new Error(b); return b; });
 
-  T('тариф сохранён куратором (запись в закрытую базу)', () => { if (!w.eval('typeof sbPushTariff === "function"')) throw new Error('нет функции'); return 'функция есть'; });
+  T('тариф сохранён администратором (запись в закрытую базу)', () => { if (!w.eval('typeof sbPushTariff === "function"')) throw new Error('нет функции'); return 'функция есть'; });
   w.eval('sbPushTariff()'); await sleep(3000);
   const t1 = (await get('tariff?select=val,version&id=eq.1'))[0];
   T('тарифная сетка в базе не пострадала', () => {
@@ -41,13 +41,13 @@ const T = (n, f) => { try { const r = f(); console.log('✓', n, r ? '— ' + r 
 
   w.eval('sbPushSettings()'); await sleep(3000);
   const s1 = (await get('settings?select=val&key=eq.council'))[0];
-  T('настройки Совета сохранены куратором', () => {
+  T('настройки Совета сохранены администратором', () => {
     if (JSON.stringify(s0.val) !== JSON.stringify(s1.val)) throw new Error('значения изменились');
     return 'порог выборов ' + s1.val.electionThreshold + ', учебный режим ' + s1.val.demoCouncil;
   });
 
   const refusal = warns.filter(x => /доступ отклонён/.test(x));
-  T('отказов доступа при записи куратора не было', () => { if (refusal.length) throw new Error(refusal.join(' | ')); return '0 отказов'; });
+  T('отказов доступа при записи администратора не было', () => { if (refusal.length) throw new Error(refusal.join(' | ')); return '0 отказов'; });
 
   console.log('\nОшибки JS:', errs.length);
   process.exit(errs.length ? 1 : 0);

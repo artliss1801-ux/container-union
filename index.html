@@ -616,6 +616,7 @@ function seed() {
 
   return {
     carriers, members, votes, loads, applications, calcs, decisions,
+    profiles: [],   /* роли участников: в онлайне приходят из защищённой базы */
     settings: { demoCouncil: false, electionThreshold: 50, elections: null },
     tariff: JSON.parse(JSON.stringify(DEFAULT_TARIFF)),
     log: [{ at: '2026-10-15', text: 'Демонстрационные данные загружены (прототип v0.9).' }]
