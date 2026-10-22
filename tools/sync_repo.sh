@@ -71,10 +71,12 @@ else
 fi
 git remote set-url origin "https://github.com/$OWNER/$REPO.git"   # токен в историю не попадает
 
-echo "▸ Шаг 6. Проверка GitHub Pages"
+echo "▸ Шаг 6. Проверка сайта (домен, затем прежний адрес Pages)"
+SITE="${SITE:-https://cont-union.ru/}"
 for i in $(seq 1 30); do
   sleep 10
-  HTTP=$(curl -s -o /tmp/ks-check.html -w "%{http_code}" -L "https://$OWNER.github.io/$REPO/?cb=$(date +%s)" || true)
+  HTTP=$(curl -s -o /tmp/ks-check.html -w "%{http_code}" -L "$SITE?cb=$(date +%s)" || true)
+  [ "$HTTP" = "200" ] || HTTP=$(curl -s -o /tmp/ks-check.html -w "%{http_code}" -L "https://$OWNER.github.io/$REPO/?cb=$(date +%s)" || true)
   if [ "$HTTP" = "200" ]; then
     N=$(wc -c < /tmp/ks-check.html)
     echo "  ✓ сайт отвечает, страница $N байт (попытка $i)"
