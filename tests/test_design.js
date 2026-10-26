@@ -39,6 +39,25 @@ const T = (n, f) => Promise.resolve().then(f).then(r => console.log('✓', n, r 
     if (!/\.ks-logo:hover \.ks-box,\.ks-logo\.open \.ks-box\{color:#ffd9a6\}/.test(css)) throw new Error('буквы К и С не переходят в общий цвет слова');
     return 'единый предел ширины букв, контейнеры растворяются — слово читается как «Контейнерный Союз»';
   });
+  await T('разворот: К и С прижаты к слову — читаются как цельные слова', () => {
+    const css = html;
+    if (!/\.ks-box\{[^}]*padding:0 7px/.test(css)) throw new Error('плитка буквы снова фиксированной ширины — будет зазор');
+    if (!/\.ks-logo:hover \.ks-box,\.ks-logo\.open \.ks-box\{padding:0\}/.test(css)) throw new Error('при развороте плитка не сжимается по букве');
+    if (!/\.ks-box-b\{margin-left:4px\}/.test(css)) throw new Error('нет межсловного интервала перед «С»');
+    const box = d.querySelector('#ksLogo');
+    const first = box.querySelector('.ks-box'), second = box.querySelector('.ks-box-b');
+    if (!first || !second) throw new Error('плитки К и С не найдены');
+    if (second.textContent.trim() !== 'С' && first.textContent.trim() !== 'К') throw new Error('в плитках не К и С');
+    const w2 = w.getComputedStyle(second).marginLeft;
+    if (!/4px/.test(w2)) throw new Error('у «С» нет отступа от первого слова: ' + w2);
+    const before = w.getComputedStyle(first).padding;
+    box.classList.add('open');
+    const after = w.getComputedStyle(first).padding;
+    box.classList.remove('open');
+    if (!/0px/.test(after)) throw new Error('в развороте остаётся поле вокруг буквы: ' + after);
+    if (before === after) throw new Error('поле вокруг буквы не меняется: ' + before);
+    return 'К + онтейнерный и С + оюз смыкаются вплотную, между словами — обычный интервал (' + before.trim() + ' → 0)';
+  });
   await T('клик по логотипу разворачивает название (для телефона)', () => {
     const box = d.querySelector('#ksLogo');
     box.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
